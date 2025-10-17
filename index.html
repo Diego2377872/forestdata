@@ -188,7 +188,10 @@
         const gpsRetryContainer = document.getElementById('gps-retry-container');
         const demoModeBanner = document.getElementById('demo-mode-banner');
 
-        const COLLECTION_NAME = 'field_data';
+        // --- CONFIGURACIÓN DE ALMACENAMIENTO ---
+        // Aquí puedes cambiar el nombre de la colección (tabla) de Firestore donde se guardarán los registros.
+        // Los datos se almacenarán en la ruta: /artifacts/__app_id/public/data/{COLLECTION_NAME}
+        const COLLECTION_NAME = 'field_data_geolocalizados'; 
 
         // Mapeo de colores para la etapa de avance
         const stageColors = {
@@ -387,7 +390,7 @@
                     const path = `/artifacts/${appId}/public/data/${COLLECTION_NAME}`;
                     const collectionRef = collection(db, path);
                     await addDoc(collectionRef, record);
-                    showStatus('Datos guardados exitosamente en Firestore.', 'success');
+                    showStatus('Datos guardados exitosamente en Firestore. Colección: ' + COLLECTION_NAME, 'success');
                 }
                 
                 form.reset();
@@ -673,7 +676,7 @@
                     }
                 });
                 renderData();
-                showStatus(`Total de ${snapshot.size} registros cargados en el mapa y la tabla.`, 'success');
+                showStatus(`Total de ${snapshot.size} registros cargados en el mapa y la tabla desde la colección: ${COLLECTION_NAME}`, 'success');
 
             }, (error) => {
                 console.error("Error en la escucha de Firestore:", error);
@@ -692,6 +695,7 @@
     </script>
 </body>
 </html>
+
 
 
 
