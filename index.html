@@ -25,6 +25,16 @@
             border-radius: 0.75rem; /* rounded-xl */
             box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); /* shadow-lg */
         }
+        /* Estilo para el icono div custom de Leaflet */
+        .custom-marker {
+            /* Necesario para que L.divIcon funcione correctamente con un div puro */
+            background: none !important;
+            border: none !important;
+        }
+        /* Estilo para filas de tabla clickeables */
+        #data-table-container tbody tr {
+            cursor: pointer;
+        }
     </style>
 </head>
 <body class="min-h-screen">
@@ -90,6 +100,13 @@
                             </span>
                         </p>
                         <p class="text-xs text-blue-600 mt-1 hidden" id="gps-coords"></p>
+                        <!-- Nuevo botón de reintento, oculto por defecto -->
+                        <div id="gps-retry-container" class="mt-2 hidden">
+                             <button type="button" id="retry-gps-btn"
+                                     class="px-3 py-1 text-xs font-semibold rounded-md bg-yellow-500 text-white hover:bg-yellow-600 transition duration-150">
+                                 Reintentar GPS
+                             </button>
+                        </div>
                     </div>
 
                     <!-- ID de Usuario (Para colaboración) -->
@@ -111,6 +128,14 @@
                 <p class="text-xs text-gray-500 mt-3 p-2 bg-gray-100 rounded-lg">
                     Los puntos en el mapa son los datos registrados por todos los usuarios en esta aplicación.
                 </p>
+            </div>
+            
+            <!-- Nueva Sección: Tabla de Datos -->
+            <div class="lg:col-span-3 mt-8">
+                <h2 class="text-xl font-semibold mb-4 text-gray-800">3. Registros en Tabla</h2>
+                <div id="data-table-container" class="bg-white p-6 rounded-xl shadow-lg border border-gray-100 overflow-x-auto">
+                    <p class="text-gray-500 italic">Cargando datos...</p>
+                </div>
             </div>
 
         </main>
@@ -138,6 +163,9 @@
         let map = null;
         let userId = null;
         let isAuthReady = false;
+        let currentCoords = null; // Variable para almacenar la última ubicación válida
+        let allFieldData = []; // Almacenar todos los documentos
+        let sortState = { key: 'timestamp', direction: 'desc' }; // Estado inicial de ordenamiento
 
         const form = document.getElementById('data-form');
         const submitBtn = document.getElementById('submit-btn');
@@ -146,17 +174,30 @@
         const gpsCoordsDisplay = document.getElementById('gps-coords');
         const userIdDisplay = document.getElementById('user-id-display');
         const loadingAuth = document.getElementById('loading-auth');
+        const retryGpsBtn = document.getElementById('retry-gps-btn');
+        const gpsRetryContainer = document.getElementById('gps-retry-container');
+
 
         const COLLECTION_NAME = 'field_data';
+
+        // Mapeo de colores para la etapa de avance
+        const stageColors = {
+            'Inicio': { bg: 'bg-red-500', text: 'text-red-700', hex: '#ef4444' },
+            'Proceso': { bg: 'bg-yellow-500', text: 'text-yellow-700', hex: '#f59e0b' },
+            'Finalizacion': { bg: 'bg-blue-500', text: 'text-blue-700', hex: '#3b82f6' },
+            'Completado': { bg: 'bg-green-500', text: 'text-green-700', hex: '#10b981' },
+        };
 
         // --- Utilidades UI ---
         function showStatus(message, type = 'info') {
             statusMessage.textContent = message;
-            statusMessage.classList.remove('hidden', 'bg-red-100', 'text-red-700', 'bg-green-100', 'text-green-700', 'bg-yellow-100', 'text-yellow-700');
+            statusMessage.classList.remove('hidden', 'bg-red-100', 'text-red-700', 'bg-green-100', 'text-green-700', 'bg-yellow-100', 'text-yellow-700', 'bg-blue-100', 'text-blue-700');
             if (type === 'error') {
                 statusMessage.classList.add('bg-red-100', 'text-red-700');
             } else if (type === 'success') {
                 statusMessage.classList.add('bg-green-100', 'text-green-700');
+            } else if (type === 'info') {
+                statusMessage.classList.add('bg-blue-100', 'text-blue-700');
             } else {
                 statusMessage.classList.add('bg-yellow-100', 'text-yellow-700');
             }
@@ -203,6 +244,7 @@
                         toggleForm(true);
                         initializeMap();
                         setupRealtimeListener();
+                        getLocationAndUpdateUI(); // Intenta obtener la ubicación al inicio
                     } else {
                         userId = crypto.randomUUID(); // Fallback temporal si no hay auth
                         userIdDisplay.textContent = userId + ' (Anónimo)';
@@ -211,6 +253,7 @@
                         toggleForm(true);
                         initializeMap();
                         setupRealtimeListener();
+                        getLocationAndUpdateUI(); // Intenta obtener la ubicación al inicio
                     }
                     loadingAuth.classList.add('hidden');
                 });
@@ -222,46 +265,78 @@
             }
         }
 
-        // --- Geolocalización ---
-        function getGeolocation() {
+        // --- Geolocalización (Promise interna) ---
+        function getGeolocationPromise() {
+            // Devuelve una promesa sin manipulación de UI, sólo las coordenadas
             return new Promise((resolve, reject) => {
-                gpsStatus.textContent = 'Obteniendo ubicación...';
-                gpsStatus.classList.remove('text-blue-600');
-                gpsStatus.classList.add('text-yellow-600');
-
                 if (navigator.geolocation) {
                     navigator.geolocation.getCurrentPosition(
-                        (position) => {
-                            gpsStatus.textContent = '¡Ubicación obtenida!';
-                            gpsStatus.classList.remove('text-yellow-600');
-                            gpsStatus.classList.add('text-green-600');
-                            gpsCoordsDisplay.textContent = `Lat: ${position.coords.latitude.toFixed(6)}, Lng: ${position.coords.longitude.toFixed(6)}`;
-                            gpsCoordsDisplay.classList.remove('hidden');
-                            resolve({
-                                lat: position.coords.latitude,
-                                lng: position.coords.longitude
-                            });
-                        },
-                        (error) => {
-                            let msg = "Error de geolocalización. Asegúrate de tener el GPS activado.";
-                            if (error.code === 1) msg = "Acceso a GPS denegado por el usuario.";
-                            if (error.code === 2) msg = "Ubicación no disponible.";
-                            if (error.code === 3) msg = "Tiempo de espera agotado.";
-
-                            gpsStatus.textContent = `Error: ${msg}`;
-                            gpsStatus.classList.remove('text-yellow-600');
-                            gpsStatus.classList.add('text-red-600');
-                            reject(new Error(msg));
-                        },
+                        resolve,
+                        reject,
                         { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
                     );
                 } else {
-                    gpsStatus.textContent = 'Error: Geolocalización no soportada por este navegador.';
-                    gpsStatus.classList.remove('text-yellow-600');
-                    gpsStatus.classList.add('text-red-600');
                     reject(new Error('Geolocalización no soportada.'));
                 }
             });
+        }
+
+        // --- Geolocalización y Actualización de UI ---
+        async function getLocationAndUpdateUI(isFormSubmission = false) {
+            currentCoords = null; // Borrar coordenadas previas al iniciar el intento
+
+            gpsStatus.textContent = 'Obteniendo ubicación...';
+            gpsStatus.classList.remove('text-blue-600', 'text-green-600', 'text-red-600');
+            gpsStatus.classList.add('text-yellow-600');
+            gpsCoordsDisplay.classList.add('hidden');
+            gpsRetryContainer.classList.add('hidden');
+            
+            if (isFormSubmission) {
+                 submitBtn.disabled = true;
+            }
+
+            try {
+                const position = await getGeolocationPromise();
+                currentCoords = {
+                    lat: position.coords.latitude,
+                    lng: position.coords.longitude
+                };
+                
+                gpsStatus.textContent = '¡Ubicación obtenida!';
+                gpsStatus.classList.remove('text-yellow-600');
+                gpsStatus.classList.add('text-green-600');
+                gpsCoordsDisplay.textContent = `Lat: ${currentCoords.lat.toFixed(6)}, Lng: ${currentCoords.lng.toFixed(6)}`;
+                gpsCoordsDisplay.classList.remove('hidden');
+
+                if (isFormSubmission) {
+                    return currentCoords; // Devuelve las coordenadas para guardar
+                }
+
+            } catch (error) {
+                let msg = "Error de geolocalización. Asegúrate de tener el GPS activado.";
+                if (error.code === 1) msg = "Acceso a GPS denegado por el usuario. Por favor, revisa los permisos del navegador (a la izquierda de la URL) e intenta de nuevo.";
+                if (error.code === 2) msg = "Ubicación no disponible.";
+                if (error.code === 3) msg = "Tiempo de espera agotado.";
+                if (error.message.includes('soportada')) msg = error.message;
+
+                gpsStatus.textContent = `Error GPS: ${msg}`;
+                gpsStatus.classList.remove('text-yellow-600', 'text-green-600');
+                gpsStatus.classList.add('text-red-600');
+                
+                gpsRetryContainer.classList.remove('hidden');
+
+                if (isFormSubmission) {
+                    showStatus(`No se pudo obtener la ubicación para guardar: ${msg}`, 'error');
+                }
+                
+                return null; // Indica fallo
+            } finally {
+                if (isFormSubmission) {
+                    // Solo si fue una solicitud de envío de formulario, restaurar el botón
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = 'Guardar Datos y Ubicación';
+                }
+            }
         }
 
         // --- Guardar Datos en Firestore ---
@@ -284,8 +359,14 @@
                 });
                 showStatus('Datos guardados exitosamente. Se reflejarán en el mapa.', 'success');
                 form.reset();
-                gpsStatus.textContent = 'Datos guardados.';
+                // Limpiar coordenadas y estado después de un guardado exitoso
+                currentCoords = null;
+                gpsStatus.textContent = 'Haz clic en Guardar para obtener la ubicación.';
+                gpsStatus.classList.remove('text-green-600', 'text-red-600', 'text-yellow-600');
+                gpsStatus.classList.add('text-blue-600');
                 gpsCoordsDisplay.classList.add('hidden');
+                gpsRetryContainer.classList.add('hidden');
+
             } catch (error) {
                 console.error("Error al guardar en Firestore:", error);
                 showStatus(`Error al guardar: ${error.message}`, 'error');
@@ -299,6 +380,22 @@
         form.addEventListener('submit', async (e) => {
             e.preventDefault();
             
+            showStatus('Validando datos y procesando ubicación...', 'info');
+
+            // 1. Obtener la ubicación, ya sea de la variable de estado o intentándolo ahora
+            let coordsToSave = currentCoords;
+
+            if (!coordsToSave) {
+                // Si no hay coordenadas pre-existentes, intentar obtenerlas
+                coordsToSave = await getLocationAndUpdateUI(true);
+            }
+            
+            if (!coordsToSave) {
+                // Si coordsToSave sigue siendo null, getLocationAndUpdateUI ya mostró el error.
+                return;
+            }
+
+            // 2. Preparar y guardar datos
             const data = {
                 fecha: document.getElementById('fecha').value,
                 ci: document.getElementById('ci').value,
@@ -306,17 +403,15 @@
                 etapaAvance: document.getElementById('etapaAvance').value,
             };
 
-            showStatus('Iniciando proceso de obtención de ubicación...', 'info');
-
-            try {
-                const coords = await getGeolocation();
-                const fullData = { ...data, lat: coords.lat, lng: coords.lng };
-                await saveData(fullData);
-            } catch (error) {
-                console.error("Error en el proceso de guardado:", error);
-                showStatus(`No se pudo guardar: ${error.message}`, 'error');
-            }
+            const fullData = { ...data, lat: coordsToSave.lat, lng: coordsToSave.lng };
+            await saveData(fullData);
         });
+        
+        // --- Manejador del botón de Reintento GPS ---
+        retryGpsBtn.addEventListener('click', () => {
+             getLocationAndUpdateUI();
+        });
+
 
         // --- Configuración de Leaflet Map ---
         function initializeMap() {
@@ -336,13 +431,152 @@
 
         const markerGroup = L.layerGroup();
 
+        // --- Lógica de Ordenamiento de la Tabla ---
+        function sortData(data, key, direction) {
+            return data.sort((a, b) => {
+                let valA = a[key];
+                let valB = b[key];
+
+                // Manejo especial para Firestore Timestamp
+                if (key === 'timestamp') {
+                    // Convertir a milisegundos para comparación
+                    valA = valA && typeof valA.toMillis === 'function' ? valA.toMillis() : (valA || 0);
+                    valB = valB && typeof valB.toMillis === 'function' ? valB.toMillis() : (valB || 0);
+                }
+                
+                // Conversión de strings a minúsculas para orden alfabético
+                if (typeof valA === 'string' && typeof valB === 'string') {
+                    valA = valA.toLowerCase();
+                    valB = valB.toLowerCase();
+                }
+
+                if (valA < valB) return direction === 'asc' ? -1 : 1;
+                if (valA > valB) return direction === 'asc' ? 1 : -1;
+                return 0;
+            });
+        }
+
+        function handleSort(key) {
+            if (sortState.key === key) {
+                // Alternar dirección
+                sortState.direction = sortState.direction === 'asc' ? 'desc' : 'asc';
+            } else {
+                // Nueva columna, ordenar descendente por defecto
+                sortState.key = key;
+                sortState.direction = 'desc';
+            }
+            // Volver a renderizar la tabla con el nuevo estado de ordenamiento
+            renderTable(allFieldData);
+        }
+
+        // --- Renderizado y Lógica de la Tabla ---
+        function renderTable(data) {
+            const container = document.getElementById('data-table-container');
+            
+            if (data.length === 0) {
+                container.innerHTML = '<p class="text-gray-500 italic">No hay datos de campo registrados todavía.</p>';
+                return;
+            }
+
+            // 1. Ordenar los datos
+            const sortedData = sortData([...data], sortState.key, sortState.direction);
+
+            // 2. Crear el encabezado de la tabla
+            const headers = [
+                { id: 'fecha', name: 'Fecha' },
+                { id: 'nombreCompleto', name: 'Nombre' },
+                { id: 'ci', name: 'C.I.' },
+                { id: 'etapaAvance', name: 'Etapa' },
+                { id: 'lat', name: 'Lat/Lng' },
+                { id: 'timestamp', name: 'Registro' }
+            ];
+
+            let tableHTML = `
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            ${headers.map(header => {
+                                // Determinar el ícono de ordenamiento
+                                let sortIcon = '';
+                                if (sortState.key === header.id) {
+                                    sortIcon = sortState.direction === 'asc' 
+                                        ? '<span class="ml-1 text-xs">▲</span>' 
+                                        : '<span class="ml-1 text-xs">▼</span>';
+                                }
+                                
+                                // Crear el encabezado clickeable
+                                return `
+                                    <th scope="col" data-key="${header.id}" 
+                                        class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-200 transition duration-150">
+                                        ${header.name} ${sortIcon}
+                                    </th>
+                                `;
+                            }).join('')}
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        ${sortedData.map(item => {
+                            // Obtener color para la etapa
+                            const stage = item.etapaAvance;
+                            const colorConfig = stageColors[stage];
+                            const colorClass = colorConfig?.text || 'text-gray-700';
+
+                            // Formatear Timestamp (si existe)
+                            let timestampText = 'N/A';
+                            if (item.timestamp && typeof item.timestamp.toDate === 'function') {
+                                timestampText = item.timestamp.toDate().toLocaleString('es-ES', { 
+                                    hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' 
+                                });
+                            }
+
+                            // Formatear Lat/Lng
+                            const latLngText = `${item.lat.toFixed(4)}, ${item.lng.toFixed(4)}`;
+
+                            return `
+                                <tr class="hover:bg-blue-50/50 transition duration-150" data-lat="${item.lat}" data-lng="${item.lng}">
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${item.fecha}</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${item.nombreCompleto}</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${item.ci}</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm font-semibold ${colorClass}">${item.etapaAvance}</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${latLngText}</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${timestampText}</td>
+                                </tr>
+                            `;
+                        }).join('')}
+                    </tbody>
+                </table>
+            `;
+
+            container.innerHTML = tableHTML;
+
+            // 3. Adjuntar manejadores de eventos de ordenación y click de fila
+            container.querySelectorAll('th[data-key]').forEach(th => {
+                th.addEventListener('click', () => {
+                    const key = th.getAttribute('data-key');
+                    handleSort(key);
+                });
+            });
+
+             // 4. Agregar funcionalidad para centrar mapa al hacer clic en fila
+            container.querySelectorAll('tbody tr').forEach(row => {
+                row.addEventListener('click', () => {
+                    const lat = parseFloat(row.getAttribute('data-lat'));
+                    const lng = parseFloat(row.getAttribute('data-lng'));
+                    if (map && !isNaN(lat) && !isNaN(lng)) {
+                        map.setView([lat, lng], 14); // Mover el mapa a la ubicación y hacer zoom
+                    }
+                });
+            });
+        }
+
+
         // --- Escucha en Tiempo Real (Firestore) ---
         function setupRealtimeListener() {
             if (!db || !isAuthReady) return;
 
             const path = `/artifacts/${appId}/public/data/${COLLECTION_NAME}`;
             const collectionRef = collection(db, path);
-            const q = query(collectionRef); // Puedes añadir .limit(100) o .orderBy() si lo necesitas, pero lo mantendremos simple para evitar errores de índice.
+            const q = query(collectionRef); 
 
             markerGroup.addTo(map);
 
@@ -350,7 +584,8 @@
                 if (!map) return;
                 
                 markerGroup.clearLayers();
-                let bounds = []; // Para ajustar el mapa
+                let bounds = []; 
+                allFieldData = []; // Reiniciar data array
 
                 snapshot.forEach(doc => {
                     const data = doc.data();
@@ -358,12 +593,27 @@
                         const coords = [data.lat, data.lng];
                         bounds.push(coords);
                         
-                        // Formatear la fecha
-                        const dateObj = new Date(data.fecha + 'T00:00:00'); // Asume hora local a medianoche para evitar offset
-                        const formattedDate = dateObj.toLocaleDateString('es-ES', {
+                        // Agregar ID y coordenadas al array de datos para la tabla
+                        const fullData = { ...data, id: doc.id, lat: data.lat, lng: data.lng };
+                        allFieldData.push(fullData);
+                        
+                        // Obtener la configuración de color para la etapa
+                        const stage = data.etapaAvance;
+                        const colorConfig = stageColors[stage] || { bg: 'bg-gray-500', text: 'text-gray-700', hex: '#6b7280' };
+
+                        // Formatear la fecha para el popup
+                        const formattedDate = new Date(data.fecha + 'T00:00:00').toLocaleDateString('es-ES', {
                             year: 'numeric',
                             month: 'long',
                             day: 'numeric'
+                        });
+                        
+                        // Crear el icono de marcador con código de color
+                        const customIcon = L.divIcon({
+                            className: 'custom-marker',
+                            html: `<div class="${colorConfig.bg} w-4 h-4 rounded-full border-2 border-white shadow-lg transform rotate-45"></div>`,
+                            iconSize: [20, 20],
+                            iconAnchor: [10, 10]
                         });
 
                         const popupContent = `
@@ -371,18 +621,21 @@
                                 <strong style="color:#1f2937;">Fecha:</strong> ${formattedDate}<br>
                                 <strong style="color:#1f2937;">CI:</strong> ${data.ci}<br>
                                 <strong style="color:#1f2937;">Nombre:</strong> ${data.nombreCompleto}<br>
-                                <strong style="color:#1f2937;">Etapa:</strong> <span style="font-weight:bold; color:#059669;">${data.etapaAvance}</span><br>
+                                <strong style="color:#1f2937;">Etapa:</strong> <span style="font-weight:bold; color:${colorConfig.hex};">${data.etapaAvance}</span><br>
                                 <hr style="margin:4px 0;">
                                 <em style="font-size:10px; color:#6b7280;">Registrado por: ${data.userId === userId ? 'Tú' : data.userId.substring(0, 8) + '...'}</em>
                             </div>
                         `;
 
-                        const marker = L.marker(coords).bindPopup(popupContent);
+                        const marker = L.marker(coords, { icon: customIcon }).bindPopup(popupContent);
                         markerGroup.addLayer(marker);
                     }
                 });
 
-                showStatus(`Total de ${snapshot.size} registros cargados en el mapa.`, 'info');
+                showStatus(`Total de ${snapshot.size} registros cargados en el mapa y la tabla.`, 'info');
+
+                // 3. Renderizar la tabla con los datos actualizados
+                renderTable(allFieldData); 
 
                 // Si hay datos, ajustar el mapa para que muestre todos los puntos
                 if (bounds.length > 0) {
@@ -405,3 +658,4 @@
     </script>
 </body>
 </html>
+
