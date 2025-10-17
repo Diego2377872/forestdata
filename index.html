@@ -215,14 +215,18 @@
 
         // --- Configuración de Firebase ---
         async function initializeFirebase() {
-            // Muestra el error si la configuración global no se cargó.
+            loadingAuth.classList.remove('hidden');
+
+            // --- VERIFICACIÓN DE CONFIGURACIÓN CRÍTICA ---
             if (!firebaseConfig) {
-                showStatus('Error: Configuración de Firebase no encontrada.', 'error');
+                const errorMessage = 'Error: Configuración de Firebase no encontrada. Esto suele indicar que la base de datos Firestore no está habilitada en la configuración de la aplicación. Sin esta configuración, la aplicación no puede funcionar.';
+                showStatus(errorMessage, 'error');
                 loadingAuth.classList.add('hidden');
+                submitBtn.disabled = true;
+                submitBtn.textContent = 'ERROR DE CONFIGURACIÓN';
+                console.error(errorMessage);
                 return;
             }
-
-            loadingAuth.classList.remove('hidden');
 
             try {
                 const app = initializeApp(firebaseConfig);
@@ -660,5 +664,6 @@
     </script>
 </body>
 </html>
+
 
 
