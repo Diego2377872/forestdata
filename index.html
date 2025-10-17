@@ -48,11 +48,11 @@
             </p>
         </header>
 
-        <!-- Banner de Modo Demo -->
+        <!-- Banner de Modo Demo (Ahora solo se mostrará si hay un fallo de conexión) -->
         <div id="demo-mode-banner" class="hidden mb-6 p-4 rounded-xl bg-red-100 border-2 border-red-500 shadow-md">
-            <h3 class="font-bold text-red-800">⚠️ MODO DEMO ACTIVO (Error de Configuración)</h3>
+            <h3 class="font-bold text-red-800">⚠️ FALLO DE CONEXIÓN</h3>
             <p class="text-sm text-red-700 mt-1">
-                La configuración de Firebase no se encontró. La aplicación funciona con **datos temporales** que no se guardarán después de recargar. Para usar la persistencia, habilita y configura Firestore en el entorno.
+                No se pudo conectar a Firebase. La aplicación funciona con **datos temporales** que no se guardarán. Por favor, revisa la configuración.
             </p>
         </div>
         <!-- Fin Banner de Modo Demo -->
@@ -63,7 +63,7 @@
             <div class="lg:col-span-1 bg-white p-6 rounded-xl shadow-lg border border-gray-100 h-fit">
                 <h2 class="text-xl font-semibold mb-6 text-gray-800">1. Registrar Nueva Toma</h2>
 
-                <div id="loading-auth" class="text-center p-4 bg-yellow-50 rounded-lg text-yellow-700 hidden">
+                <div id="loading-auth" class="text-center p-4 bg-yellow-50 rounded-lg text-yellow-700">
                     Cargando autenticación y mapa...
                 </div>
 
@@ -109,7 +109,7 @@
                             </span>
                         </p>
                         <p class="text-xs text-blue-600 mt-1 hidden" id="gps-coords"></p>
-                        <!-- Nuevo botón de reintento, oculto por defecto -->
+                        <!-- Botón de reintento, útil si el usuario tiene el GPS apagado -->
                         <div id="gps-retry-container" class="mt-2 hidden">
                              <button type="button" id="retry-gps-btn"
                                      class="px-3 py-1 text-xs font-semibold rounded-md bg-yellow-500 text-white hover:bg-yellow-600 transition duration-150">
@@ -152,7 +152,7 @@
 
     <!-- Carga de Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-        integrity="sha205-S6fG/7gR8+O3lVq0W2n4wM2/f/g2G/j+2g0A4V0B8Zf7f+1/g2Z/g/9Q8Z/g+2/z"
+        integrity="sha205-S6fG/7gR8+O3lVq0W2n4wM2/f/g2G/j+2/z"
         crossorigin=""></script>
 
     <!-- Carga de Firebase SDKs -->
@@ -164,7 +164,10 @@
 
         // Global variables provided by the environment
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
+        
+        // CONFIGURACIÓN DE FIREBASE (USANDO CONFIGURACIÓN PROPORCIONADA POR EL USUARIO COMO FALLBACK)
+        const FALLBACK_FIREBASE_CONFIG_JSON = '{"apiKey":"AIzaSyCjn4LjXHeQT6vm10j5sArLBc4wMMsDK1c","authDomain":"datawood-7bce8.firebaseapp.com","projectId":"datawood-7bce8","storageBucket":"datawood-7bce8.firebasestorage.app","messagingSenderId":"885328297235","appId":"1:885328297235:web:c90c366672ef37a1a1aee6","measurementId":"G-988K3QG59Y"}';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : JSON.parse(FALLBACK_FIREBASE_CONFIG_JSON);
         const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
 
         let db = null;
@@ -175,7 +178,7 @@
         let currentCoords = null; 
         let allFieldData = []; 
         let sortState = { key: 'timestamp', direction: 'desc' }; 
-        let DEMO_MODE = false; // Nuevo flag para el modo demo
+        let connectionError = false; // Flag para manejar errores de conexión
 
         const form = document.getElementById('data-form');
         const submitBtn = document.getElementById('submit-btn');
@@ -207,8 +210,10 @@
             statusMessage.classList.remove('hidden', 'bg-red-100', 'text-red-700', 'bg-green-100', 'text-green-700', 'bg-yellow-100', 'text-yellow-700', 'bg-blue-100', 'text-blue-700');
             if (type === 'error') {
                 statusMessage.classList.add('bg-red-100', 'text-red-700');
+                demoModeBanner.classList.remove('hidden');
             } else if (type === 'success') {
                 statusMessage.classList.add('bg-green-100', 'text-green-700');
+                demoModeBanner.classList.add('hidden');
             } else if (type === 'info') {
                 statusMessage.classList.add('bg-blue-100', 'text-blue-700');
             } else {
@@ -229,24 +234,7 @@
         // --- Configuración de Firebase / Modo Demo ---
         async function initializeFirebase() {
             loadingAuth.classList.remove('hidden');
-
-            // --- VERIFICACIÓN DE CONFIGURACIÓN CRÍTICA (ACTIVA MODO DEMO) ---
-            if (!firebaseConfig) {
-                DEMO_MODE = true;
-                demoModeBanner.classList.remove('hidden');
-                console.error('Error: Configuración de Firebase no encontrada. Activando Modo Demo.');
-                userId = 'DEMO_USER_' + Math.random().toString(36).substring(2, 8).toUpperCase();
-                userIdDisplay.textContent = userId;
-                isAuthReady = true;
-                toggleForm(true);
-                initializeMap();
-                // En modo demo, la data se inicializa vacía
-                renderData();
-                getLocationAndUpdateUI();
-                loadingAuth.classList.add('hidden');
-                return;
-            }
-
+            
             try {
                 const app = initializeApp(firebaseConfig);
                 db = getFirestore(app);
@@ -262,6 +250,7 @@
                 }
 
                 onAuthStateChanged(auth, (user) => {
+                    loadingAuth.classList.add('hidden');
                     if (user) {
                         userId = user.uid;
                         userIdDisplay.textContent = userId;
@@ -270,23 +259,36 @@
                         initializeMap();
                         setupRealtimeListener();
                         getLocationAndUpdateUI();
+                        demoModeBanner.classList.add('hidden');
                     } else {
+                        // Fallback si la autenticación falla, pero la configuración es válida
                         userId = crypto.randomUUID(); 
-                        userIdDisplay.textContent = userId + ' (Anónimo)';
-                        showStatus('Advertencia: No se pudo autenticar, usando ID anónimo.', 'error');
+                        userIdDisplay.textContent = userId + ' (Anónimo - Fallo Auth)';
+                        showStatus('Advertencia: Fallo en la autenticación, usando ID anónimo. Revisa las reglas de seguridad.', 'error');
                         isAuthReady = true;
                         toggleForm(true);
                         initializeMap();
                         setupRealtimeListener();
                         getLocationAndUpdateUI();
+                        connectionError = true;
                     }
-                    loadingAuth.classList.add('hidden');
                 });
 
             } catch (error) {
                 console.error("Error al inicializar Firebase o autenticar:", error);
-                showStatus(`Error crítico al iniciar la app: ${error.message}`, 'error');
+                showStatus(`Error crítico al iniciar la app: ${error.message}. Activando modo temporal.`, 'error');
+                
+                // Modo de Fallback (Simulación Demo)
+                connectionError = true;
+                userId = 'DEMO_USER_' + Math.random().toString(36).substring(2, 8).toUpperCase();
+                userIdDisplay.textContent = userId;
+                isAuthReady = true;
+                toggleForm(true);
+                initializeMap();
+                renderData(); // Inicializa la data vacía en el modo demo
+                getLocationAndUpdateUI();
                 loadingAuth.classList.add('hidden');
+                demoModeBanner.classList.remove('hidden');
             }
         }
 
@@ -376,21 +378,21 @@
                 const record = {
                     ...data,
                     userId: userId,
-                    timestamp: DEMO_MODE ? new Date() : serverTimestamp()
+                    timestamp: connectionError ? new Date() : serverTimestamp()
                 };
 
-                if (DEMO_MODE) {
-                    // Modo Demo: Guardar en array en memoria
+                if (connectionError) {
+                    // Modo de Fallback: Guardar en array en memoria
                     record.id = allFieldData.length.toString(); // ID simulado
                     allFieldData.push(record);
                     renderData(); // Refrescar UI inmediatamente
-                    showStatus('Datos guardados en modo DEMO. ¡Funciona!', 'success');
+                    showStatus('Datos guardados en MODO TEMPORAL. No serán persistentes.', 'error');
                 } else {
                     // Modo Real: Guardar en Firestore
                     const path = `/artifacts/${appId}/public/data/${COLLECTION_NAME}`;
                     const collectionRef = collection(db, path);
                     await addDoc(collectionRef, record);
-                    showStatus('Datos guardados exitosamente en Firestore. Colección: ' + COLLECTION_NAME, 'success');
+                    showStatus(`Datos guardados exitosamente en Firestore. Colección: ${COLLECTION_NAME}`, 'success');
                 }
                 
                 form.reset();
@@ -468,7 +470,7 @@
                 let valA = a[key];
                 let valB = b[key];
 
-                // Manejo especial para Firestore Timestamp o Date en Demo Mode
+                // Manejo especial para Firestore Timestamp o Date en modo Fallback
                 if (key === 'timestamp') {
                     // Convertir a milisegundos para comparación
                     valA = valA instanceof Date ? valA.getTime() : (valA && typeof valA.toMillis === 'function' ? valA.toMillis() : (valA || 0));
@@ -593,7 +595,7 @@
                             // Formatear Timestamp (si existe)
                             let timestampText = 'N/A';
                             let dateObj = null;
-                            if (DEMO_MODE && item.timestamp instanceof Date) {
+                            if (connectionError && item.timestamp instanceof Date) {
                                 dateObj = item.timestamp;
                             } else if (item.timestamp && typeof item.timestamp.toDate === 'function') {
                                 dateObj = item.timestamp.toDate();
@@ -653,8 +655,8 @@
 
         // --- Escucha en Tiempo Real (Firestore o Demo) ---
         function setupRealtimeListener() {
-            if (DEMO_MODE) {
-                // En modo demo, no hay listener en tiempo real, simplemente se usa renderData() al guardar.
+            if (connectionError) {
+                // En modo de fallback, no hay listener en tiempo real.
                 renderData();
                 return;
             }
@@ -681,6 +683,8 @@
             }, (error) => {
                 console.error("Error en la escucha de Firestore:", error);
                 showStatus('Error al cargar datos del mapa en tiempo real.', 'error');
+                connectionError = true; // Activar modo temporal si falla el listener
+                renderData();
             });
         }
 
@@ -695,7 +699,6 @@
     </script>
 </body>
 </html>
-
 
 
 
