@@ -215,8 +215,10 @@
 
         // --- Configuración de Firebase ---
         async function initializeFirebase() {
+            // Muestra el error si la configuración global no se cargó.
             if (!firebaseConfig) {
                 showStatus('Error: Configuración de Firebase no encontrada.', 'error');
+                loadingAuth.classList.add('hidden');
                 return;
             }
 
@@ -658,4 +660,5 @@
     </script>
 </body>
 </html>
+
 
