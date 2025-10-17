@@ -48,6 +48,15 @@
             </p>
         </header>
 
+        <!-- Banner de Modo Demo -->
+        <div id="demo-mode-banner" class="hidden mb-6 p-4 rounded-xl bg-red-100 border-2 border-red-500 shadow-md">
+            <h3 class="font-bold text-red-800">⚠️ MODO DEMO ACTIVO (Error de Configuración)</h3>
+            <p class="text-sm text-red-700 mt-1">
+                La configuración de Firebase no se encontró. La aplicación funciona con **datos temporales** que no se guardarán después de recargar. Para usar la persistencia, habilita y configura Firestore en el entorno.
+            </p>
+        </div>
+        <!-- Fin Banner de Modo Demo -->
+
         <main class="grid grid-cols-1 lg:grid-cols-3 gap-8">
 
             <!-- Columna 1: Formulario de Recolección de Datos -->
@@ -150,7 +159,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, setPersistence, browserSessionPersistence } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, addDoc, onSnapshot, collection, query, where, serverTimestamp, setDoc, getDocs, limit, orderBy, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, doc, addDoc, onSnapshot, collection, query, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         import { setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // Global variables provided by the environment
@@ -163,9 +172,10 @@
         let map = null;
         let userId = null;
         let isAuthReady = false;
-        let currentCoords = null; // Variable para almacenar la última ubicación válida
-        let allFieldData = []; // Almacenar todos los documentos
-        let sortState = { key: 'timestamp', direction: 'desc' }; // Estado inicial de ordenamiento
+        let currentCoords = null; 
+        let allFieldData = []; 
+        let sortState = { key: 'timestamp', direction: 'desc' }; 
+        let DEMO_MODE = false; // Nuevo flag para el modo demo
 
         const form = document.getElementById('data-form');
         const submitBtn = document.getElementById('submit-btn');
@@ -176,7 +186,7 @@
         const loadingAuth = document.getElementById('loading-auth');
         const retryGpsBtn = document.getElementById('retry-gps-btn');
         const gpsRetryContainer = document.getElementById('gps-retry-container');
-
+        const demoModeBanner = document.getElementById('demo-mode-banner');
 
         const COLLECTION_NAME = 'field_data';
 
@@ -213,18 +223,24 @@
             }
         }
 
-        // --- Configuración de Firebase ---
+        // --- Configuración de Firebase / Modo Demo ---
         async function initializeFirebase() {
             loadingAuth.classList.remove('hidden');
 
-            // --- VERIFICACIÓN DE CONFIGURACIÓN CRÍTICA ---
+            // --- VERIFICACIÓN DE CONFIGURACIÓN CRÍTICA (ACTIVA MODO DEMO) ---
             if (!firebaseConfig) {
-                const errorMessage = 'Error: Configuración de Firebase no encontrada. Esto suele indicar que la base de datos Firestore no está habilitada en la configuración de la aplicación. Sin esta configuración, la aplicación no puede funcionar.';
-                showStatus(errorMessage, 'error');
+                DEMO_MODE = true;
+                demoModeBanner.classList.remove('hidden');
+                console.error('Error: Configuración de Firebase no encontrada. Activando Modo Demo.');
+                userId = 'DEMO_USER_' + Math.random().toString(36).substring(2, 8).toUpperCase();
+                userIdDisplay.textContent = userId;
+                isAuthReady = true;
+                toggleForm(true);
+                initializeMap();
+                // En modo demo, la data se inicializa vacía
+                renderData();
+                getLocationAndUpdateUI();
                 loadingAuth.classList.add('hidden');
-                submitBtn.disabled = true;
-                submitBtn.textContent = 'ERROR DE CONFIGURACIÓN';
-                console.error(errorMessage);
                 return;
             }
 
@@ -250,16 +266,16 @@
                         toggleForm(true);
                         initializeMap();
                         setupRealtimeListener();
-                        getLocationAndUpdateUI(); // Intenta obtener la ubicación al inicio
+                        getLocationAndUpdateUI();
                     } else {
-                        userId = crypto.randomUUID(); // Fallback temporal si no hay auth
+                        userId = crypto.randomUUID(); 
                         userIdDisplay.textContent = userId + ' (Anónimo)';
                         showStatus('Advertencia: No se pudo autenticar, usando ID anónimo.', 'error');
                         isAuthReady = true;
                         toggleForm(true);
                         initializeMap();
                         setupRealtimeListener();
-                        getLocationAndUpdateUI(); // Intenta obtener la ubicación al inicio
+                        getLocationAndUpdateUI();
                     }
                     loadingAuth.classList.add('hidden');
                 });
@@ -273,7 +289,6 @@
 
         // --- Geolocalización (Promise interna) ---
         function getGeolocationPromise() {
-            // Devuelve una promesa sin manipulación de UI, sólo las coordenadas
             return new Promise((resolve, reject) => {
                 if (navigator.geolocation) {
                     navigator.geolocation.getCurrentPosition(
@@ -289,7 +304,7 @@
 
         // --- Geolocalización y Actualización de UI ---
         async function getLocationAndUpdateUI(isFormSubmission = false) {
-            currentCoords = null; // Borrar coordenadas previas al iniciar el intento
+            currentCoords = null; 
 
             gpsStatus.textContent = 'Obteniendo ubicación...';
             gpsStatus.classList.remove('text-blue-600', 'text-green-600', 'text-red-600');
@@ -315,7 +330,7 @@
                 gpsCoordsDisplay.classList.remove('hidden');
 
                 if (isFormSubmission) {
-                    return currentCoords; // Devuelve las coordenadas para guardar
+                    return currentCoords; 
                 }
 
             } catch (error) {
@@ -335,35 +350,46 @@
                     showStatus(`No se pudo obtener la ubicación para guardar: ${msg}`, 'error');
                 }
                 
-                return null; // Indica fallo
+                return null; 
             } finally {
                 if (isFormSubmission) {
-                    // Solo si fue una solicitud de envío de formulario, restaurar el botón
                     submitBtn.disabled = false;
                     submitBtn.textContent = 'Guardar Datos y Ubicación';
                 }
             }
         }
 
-        // --- Guardar Datos en Firestore ---
+        // --- Guardar Datos (Firestore o Demo) ---
         async function saveData(data) {
-            if (!db || !isAuthReady) {
+            if (!isAuthReady) {
                 showStatus('La aplicación aún no está lista. Inténtalo de nuevo.', 'error');
                 return;
             }
 
-            const path = `/artifacts/${appId}/public/data/${COLLECTION_NAME}`;
-            const collectionRef = collection(db, path);
             submitBtn.disabled = true;
             submitBtn.textContent = 'Guardando...';
 
             try {
-                await addDoc(collectionRef, {
+                const record = {
                     ...data,
                     userId: userId,
-                    timestamp: serverTimestamp()
-                });
-                showStatus('Datos guardados exitosamente. Se reflejarán en el mapa.', 'success');
+                    timestamp: DEMO_MODE ? new Date() : serverTimestamp()
+                };
+
+                if (DEMO_MODE) {
+                    // Modo Demo: Guardar en array en memoria
+                    record.id = allFieldData.length.toString(); // ID simulado
+                    allFieldData.push(record);
+                    renderData(); // Refrescar UI inmediatamente
+                    showStatus('Datos guardados en modo DEMO. ¡Funciona!', 'success');
+                } else {
+                    // Modo Real: Guardar en Firestore
+                    const path = `/artifacts/${appId}/public/data/${COLLECTION_NAME}`;
+                    const collectionRef = collection(db, path);
+                    await addDoc(collectionRef, record);
+                    showStatus('Datos guardados exitosamente en Firestore.', 'success');
+                }
+                
                 form.reset();
                 // Limpiar coordenadas y estado después de un guardado exitoso
                 currentCoords = null;
@@ -374,7 +400,7 @@
                 gpsRetryContainer.classList.add('hidden');
 
             } catch (error) {
-                console.error("Error al guardar en Firestore:", error);
+                console.error("Error al guardar:", error);
                 showStatus(`Error al guardar: ${error.message}`, 'error');
             } finally {
                 submitBtn.disabled = false;
@@ -388,20 +414,16 @@
             
             showStatus('Validando datos y procesando ubicación...', 'info');
 
-            // 1. Obtener la ubicación, ya sea de la variable de estado o intentándolo ahora
             let coordsToSave = currentCoords;
 
             if (!coordsToSave) {
-                // Si no hay coordenadas pre-existentes, intentar obtenerlas
                 coordsToSave = await getLocationAndUpdateUI(true);
             }
             
             if (!coordsToSave) {
-                // Si coordsToSave sigue siendo null, getLocationAndUpdateUI ya mostró el error.
                 return;
             }
 
-            // 2. Preparar y guardar datos
             const data = {
                 fecha: document.getElementById('fecha').value,
                 ci: document.getElementById('ci').value,
@@ -421,7 +443,6 @@
 
         // --- Configuración de Leaflet Map ---
         function initializeMap() {
-            // Centro inicial (ejemplo: centro de Paraguay)
             const initialCoords = [-23.4425, -58.4438];
             const initialZoom = 6;
 
@@ -431,8 +452,9 @@
                 attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
             }).addTo(map);
 
-            // Añadir un control de escala
             L.control.scale().addTo(map);
+
+            markerGroup.addTo(map);
         }
 
         const markerGroup = L.layerGroup();
@@ -443,14 +465,13 @@
                 let valA = a[key];
                 let valB = b[key];
 
-                // Manejo especial para Firestore Timestamp
+                // Manejo especial para Firestore Timestamp o Date en Demo Mode
                 if (key === 'timestamp') {
                     // Convertir a milisegundos para comparación
-                    valA = valA && typeof valA.toMillis === 'function' ? valA.toMillis() : (valA || 0);
-                    valB = valB && typeof valB.toMillis === 'function' ? valB.toMillis() : (valB || 0);
+                    valA = valA instanceof Date ? valA.getTime() : (valA && typeof valA.toMillis === 'function' ? valA.toMillis() : (valA || 0));
+                    valB = valB instanceof Date ? valB.getTime() : (valB && typeof valB.toMillis === 'function' ? valB.toMillis() : (valB || 0));
                 }
                 
-                // Conversión de strings a minúsculas para orden alfabético
                 if (typeof valA === 'string' && typeof valB === 'string') {
                     valA = valA.toLowerCase();
                     valB = valB.toLowerCase();
@@ -464,21 +485,63 @@
 
         function handleSort(key) {
             if (sortState.key === key) {
-                // Alternar dirección
                 sortState.direction = sortState.direction === 'asc' ? 'desc' : 'asc';
             } else {
-                // Nueva columna, ordenar descendente por defecto
                 sortState.key = key;
                 sortState.direction = 'desc';
             }
-            // Volver a renderizar la tabla con el nuevo estado de ordenamiento
-            renderTable(allFieldData);
+            renderData(); // Llama a la función principal de renderizado
         }
 
-        // --- Renderizado y Lógica de la Tabla ---
-        function renderTable(data) {
-            const container = document.getElementById('data-table-container');
+        // --- Renderizado y Lógica de la Tabla y Mapa ---
+        function renderMapAndTable(data) {
+            if (!map) return;
             
+            markerGroup.clearLayers();
+            let bounds = []; 
+
+            data.forEach(item => {
+                const coords = [item.lat, item.lng];
+                bounds.push(coords);
+                
+                const stage = item.etapaAvance;
+                const colorConfig = stageColors[stage] || { bg: 'bg-gray-500', text: 'text-gray-700', hex: '#6b7280' };
+
+                const formattedDate = new Date(item.fecha + 'T00:00:00').toLocaleDateString('es-ES', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                });
+                
+                const customIcon = L.divIcon({
+                    className: 'custom-marker',
+                    html: `<div class="${colorConfig.bg} w-4 h-4 rounded-full border-2 border-white shadow-lg transform rotate-45"></div>`,
+                    iconSize: [20, 20],
+                    iconAnchor: [10, 10]
+                });
+
+                const popupContent = `
+                    <div style="font-family: 'Inter', sans-serif;">
+                        <strong style="color:#1f2937;">Fecha:</strong> ${formattedDate}<br>
+                        <strong style="color:#1f2937;">CI:</strong> ${item.ci}<br>
+                        <strong style="color:#1f2937;">Nombre:</strong> ${item.nombreCompleto}<br>
+                        <strong style="color:#1f2937;">Etapa:</strong> <span style="font-weight:bold; color:${colorConfig.hex};">${item.etapaAvance}</span><br>
+                        <hr style="margin:4px 0;">
+                        <em style="font-size:10px; color:#6b7280;">Registrado por: ${item.userId === userId ? 'Tú' : item.userId.substring(0, 8) + '...'}</em>
+                    </div>
+                `;
+
+                const marker = L.marker(coords, { icon: customIcon }).bindPopup(popupContent);
+                markerGroup.addLayer(marker);
+            });
+
+            // Si hay datos, ajustar el mapa para que muestre todos los puntos
+            if (bounds.length > 0) {
+                map.fitBounds(bounds, { padding: [50, 50] });
+            }
+            
+            // Renderizado de la tabla
+            const container = document.getElementById('data-table-container');
             if (data.length === 0) {
                 container.innerHTML = '<p class="text-gray-500 italic">No hay datos de campo registrados todavía.</p>';
                 return;
@@ -502,7 +565,6 @@
                     <thead class="bg-gray-50">
                         <tr>
                             ${headers.map(header => {
-                                // Determinar el ícono de ordenamiento
                                 let sortIcon = '';
                                 if (sortState.key === header.id) {
                                     sortIcon = sortState.direction === 'asc' 
@@ -510,7 +572,6 @@
                                         : '<span class="ml-1 text-xs">▼</span>';
                                 }
                                 
-                                // Crear el encabezado clickeable
                                 return `
                                     <th scope="col" data-key="${header.id}" 
                                         class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-200 transition duration-150">
@@ -522,20 +583,25 @@
                     </thead>
                     <tbody class="bg-white divide-y divide-gray-200">
                         ${sortedData.map(item => {
-                            // Obtener color para la etapa
                             const stage = item.etapaAvance;
                             const colorConfig = stageColors[stage];
                             const colorClass = colorConfig?.text || 'text-gray-700';
 
                             // Formatear Timestamp (si existe)
                             let timestampText = 'N/A';
-                            if (item.timestamp && typeof item.timestamp.toDate === 'function') {
-                                timestampText = item.timestamp.toDate().toLocaleString('es-ES', { 
+                            let dateObj = null;
+                            if (DEMO_MODE && item.timestamp instanceof Date) {
+                                dateObj = item.timestamp;
+                            } else if (item.timestamp && typeof item.timestamp.toDate === 'function') {
+                                dateObj = item.timestamp.toDate();
+                            }
+
+                            if (dateObj) {
+                                timestampText = dateObj.toLocaleTimeString('es-ES', { 
                                     hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' 
                                 });
                             }
 
-                            // Formatear Lat/Lng
                             const latLngText = `${item.lat.toFixed(4)}, ${item.lng.toFixed(4)}`;
 
                             return `
@@ -569,84 +635,46 @@
                     const lat = parseFloat(row.getAttribute('data-lat'));
                     const lng = parseFloat(row.getAttribute('data-lng'));
                     if (map && !isNaN(lat) && !isNaN(lng)) {
-                        map.setView([lat, lng], 14); // Mover el mapa a la ubicación y hacer zoom
+                        map.setView([lat, lng], 14); 
                     }
                 });
             });
         }
+        
+        // Función unificada para renderizar UI
+        function renderData() {
+            renderMapAndTable(allFieldData);
+            showStatus(`Total de ${allFieldData.length} registros cargados.`, 'info');
+        }
 
 
-        // --- Escucha en Tiempo Real (Firestore) ---
+        // --- Escucha en Tiempo Real (Firestore o Demo) ---
         function setupRealtimeListener() {
+            if (DEMO_MODE) {
+                // En modo demo, no hay listener en tiempo real, simplemente se usa renderData() al guardar.
+                renderData();
+                return;
+            }
+
             if (!db || !isAuthReady) return;
 
             const path = `/artifacts/${appId}/public/data/${COLLECTION_NAME}`;
             const collectionRef = collection(db, path);
             const q = query(collectionRef); 
 
-            markerGroup.addTo(map);
-
             onSnapshot(q, (snapshot) => {
-                if (!map) return;
-                
-                markerGroup.clearLayers();
-                let bounds = []; 
                 allFieldData = []; // Reiniciar data array
 
                 snapshot.forEach(doc => {
                     const data = doc.data();
                     if (data.lat && data.lng) {
-                        const coords = [data.lat, data.lng];
-                        bounds.push(coords);
-                        
-                        // Agregar ID y coordenadas al array de datos para la tabla
                         const fullData = { ...data, id: doc.id, lat: data.lat, lng: data.lng };
                         allFieldData.push(fullData);
-                        
-                        // Obtener la configuración de color para la etapa
-                        const stage = data.etapaAvance;
-                        const colorConfig = stageColors[stage] || { bg: 'bg-gray-500', text: 'text-gray-700', hex: '#6b7280' };
-
-                        // Formatear la fecha para el popup
-                        const formattedDate = new Date(data.fecha + 'T00:00:00').toLocaleDateString('es-ES', {
-                            year: 'numeric',
-                            month: 'long',
-                            day: 'numeric'
-                        });
-                        
-                        // Crear el icono de marcador con código de color
-                        const customIcon = L.divIcon({
-                            className: 'custom-marker',
-                            html: `<div class="${colorConfig.bg} w-4 h-4 rounded-full border-2 border-white shadow-lg transform rotate-45"></div>`,
-                            iconSize: [20, 20],
-                            iconAnchor: [10, 10]
-                        });
-
-                        const popupContent = `
-                            <div style="font-family: 'Inter', sans-serif;">
-                                <strong style="color:#1f2937;">Fecha:</strong> ${formattedDate}<br>
-                                <strong style="color:#1f2937;">CI:</strong> ${data.ci}<br>
-                                <strong style="color:#1f2937;">Nombre:</strong> ${data.nombreCompleto}<br>
-                                <strong style="color:#1f2937;">Etapa:</strong> <span style="font-weight:bold; color:${colorConfig.hex};">${data.etapaAvance}</span><br>
-                                <hr style="margin:4px 0;">
-                                <em style="font-size:10px; color:#6b7280;">Registrado por: ${data.userId === userId ? 'Tú' : data.userId.substring(0, 8) + '...'}</em>
-                            </div>
-                        `;
-
-                        const marker = L.marker(coords, { icon: customIcon }).bindPopup(popupContent);
-                        markerGroup.addLayer(marker);
                     }
                 });
+                renderData();
+                showStatus(`Total de ${snapshot.size} registros cargados en el mapa y la tabla.`, 'success');
 
-                showStatus(`Total de ${snapshot.size} registros cargados en el mapa y la tabla.`, 'info');
-
-                // 3. Renderizar la tabla con los datos actualizados
-                renderTable(allFieldData); 
-
-                // Si hay datos, ajustar el mapa para que muestre todos los puntos
-                if (bounds.length > 0) {
-                    map.fitBounds(bounds, { padding: [50, 50] });
-                }
             }, (error) => {
                 console.error("Error en la escucha de Firestore:", error);
                 showStatus('Error al cargar datos del mapa en tiempo real.', 'error');
@@ -664,6 +692,7 @@
     </script>
 </body>
 </html>
+
 
 
 
