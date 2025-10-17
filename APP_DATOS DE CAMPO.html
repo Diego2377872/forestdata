@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Levantamiento de Datos de Campo con GPS</title>
+    <!-- Carga de Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Carga de la tipografía Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet">
+    <!-- Carga de Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        integrity="sha205-l2p/9o/W1wQzKzB/t/fE8V9F/bL8Y2N2k0qj/gZ5b0+A6Zf9m4b+2+q9z"
+        crossorigin=""/>
+    <style>
+        /* Estilos personalizados y configuración de tipografía */
+        body { font-family: 'Inter', sans-serif; background-color: #f7f9fb; }
+        .form-input {
+            @apply w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 ease-in-out;
+        }
+        #map {
+            height: 50vh; /* Altura del mapa responsiva */
+            min-height: 300px;
+            width: 100%;
+            border-radius: 0.75rem; /* rounded-xl */
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); /* shadow-lg */
+        }
+    </style>
+</head>
+<body class="min-h-screen">
+    <div class="container mx-auto p-4 md:p-8">
+        <header class="text-center mb-8">
+            <h1 class="text-3xl font-extrabold text-gray-900 md:text-4xl">
+                Carga de Datos de Campo
+            </h1>
+            <p class="text-gray-600 mt-2">
+                Registro georreferenciado de actividades.
+            </p>
+        </header>
+
+        <main class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+
+            <!-- Columna 1: Formulario de Recolección de Datos -->
+            <div class="lg:col-span-1 bg-white p-6 rounded-xl shadow-lg border border-gray-100 h-fit">
+                <h2 class="text-xl font-semibold mb-6 text-gray-800">1. Registrar Nueva Toma</h2>
+
+                <div id="loading-auth" class="text-center p-4 bg-yellow-50 rounded-lg text-yellow-700 hidden">
+                    Cargando autenticación y mapa...
+                </div>
+
+                <div id="status-message" class="p-3 mb-4 rounded-lg font-medium text-sm hidden" role="alert"></div>
+
+                <form id="data-form">
+                    <!-- Fecha de Toma de Datos -->
+                    <div class="mb-4">
+                        <label for="fecha" class="block text-sm font-medium text-gray-700 mb-1">Fecha de Toma de Datos</label>
+                        <input type="date" id="fecha" required class="form-input">
+                    </div>
+
+                    <!-- C.I. (Cédula de Identidad) -->
+                    <div class="mb-4">
+                        <label for="ci" class="block text-sm font-medium text-gray-700 mb-1">C.I. / Identificación</label>
+                        <input type="text" id="ci" placeholder="Ingrese C.I. o DNI" required class="form-input">
+                    </div>
+
+                    <!-- Nombre y Apellido -->
+                    <div class="mb-4">
+                        <label for="nombre" class="block text-sm font-medium text-gray-700 mb-1">Nombre y Apellido</label>
+                        <input type="text" id="nombre" placeholder="Nombre completo" required class="form-input">
+                    </div>
+
+                    <!-- Etapa de Avance -->
+                    <div class="mb-4">
+                        <label for="etapaAvance" class="block text-sm font-medium text-gray-700 mb-1">Etapa de Avance</label>
+                        <select id="etapaAvance" required class="form-input bg-white">
+                            <option value="" disabled selected>Seleccione la etapa</option>
+                            <option value="Inicio">Inicio de Trabajos</option>
+                            <option value="Proceso">En Proceso (50%)</option>
+                            <option value="Finalizacion">Casi Finalizado (90%)</option>
+                            <option value="Completado">Trabajo Completado (100%)</option>
+                        </select>
+                    </div>
+
+                    <!-- Ubicación GPS (se llenará automáticamente) -->
+                    <div class="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                        <p class="text-sm font-medium text-blue-700">
+                            <span class="font-bold">Ubicación GPS:</span>
+                            <span id="gps-status" class="ml-2 font-normal text-xs text-blue-600">
+                                Haz clic en Guardar para obtener la ubicación.
+                            </span>
+                        </p>
+                        <p class="text-xs text-blue-600 mt-1 hidden" id="gps-coords"></p>
+                    </div>
+
+                    <!-- ID de Usuario (Para colaboración) -->
+                    <div id="user-info" class="text-xs text-gray-500 mb-4 p-2 bg-gray-100 rounded-lg">
+                        Tu ID de Sesión: <span id="user-id-display" class="font-mono text-gray-700 break-all">Cargando...</span>
+                    </div>
+
+                    <button type="submit" id="submit-btn" disabled
+                            class="w-full bg-blue-600 text-white p-3 rounded-lg font-bold hover:bg-blue-700 transition duration-200 shadow-md disabled:bg-gray-400">
+                        Guardar Datos y Ubicación
+                    </button>
+                </form>
+            </div>
+
+            <!-- Columna 2/3: Mapa de Datos Registrados -->
+            <div class="lg:col-span-2">
+                <h2 class="text-xl font-semibold mb-4 text-gray-800">2. Mapa de Registros Totales</h2>
+                <div id="map"></div>
+                <p class="text-xs text-gray-500 mt-3 p-2 bg-gray-100 rounded-lg">
+                    Los puntos en el mapa son los datos registrados por todos los usuarios en esta aplicación.
+                </p>
+            </div>
+
+        </main>
+    </div>
+
+    <!-- Carga de Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+        integrity="sha205-S6fG/7gR8+O3lVq0W2n4wM2/f/g2G/j+2g0A4V0B8Zf7f+1/g2Z/g/9Q8Z/g+2/z"
+        crossorigin=""></script>
+
+    <!-- Carga de Firebase SDKs -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, setPersistence, browserSessionPersistence } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, addDoc, onSnapshot, collection, query, where, serverTimestamp, setDoc, getDocs, limit, orderBy, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Global variables provided by the environment
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+        let db = null;
+        let auth = null;
+        let map = null;
+        let userId = null;
+        let isAuthReady = false;
+
+        const form = document.getElementById('data-form');
+        const submitBtn = document.getElementById('submit-btn');
+        const statusMessage = document.getElementById('status-message');
+        const gpsStatus = document.getElementById('gps-status');
+        const gpsCoordsDisplay = document.getElementById('gps-coords');
+        const userIdDisplay = document.getElementById('user-id-display');
+        const loadingAuth = document.getElementById('loading-auth');
+
+        const COLLECTION_NAME = 'field_data';
+
+        // --- Utilidades UI ---
+        function showStatus(message, type = 'info') {
+            statusMessage.textContent = message;
+            statusMessage.classList.remove('hidden', 'bg-red-100', 'text-red-700', 'bg-green-100', 'text-green-700', 'bg-yellow-100', 'text-yellow-700');
+            if (type === 'error') {
+                statusMessage.classList.add('bg-red-100', 'text-red-700');
+            } else if (type === 'success') {
+                statusMessage.classList.add('bg-green-100', 'text-green-700');
+            } else {
+                statusMessage.classList.add('bg-yellow-100', 'text-yellow-700');
+            }
+            statusMessage.classList.remove('hidden');
+        }
+
+        function toggleForm(enabled) {
+            submitBtn.disabled = !enabled;
+            if (enabled) {
+                submitBtn.textContent = 'Guardar Datos y Ubicación';
+            } else {
+                submitBtn.textContent = 'Inicializando...';
+            }
+        }
+
+        // --- Configuración de Firebase ---
+        async function initializeFirebase() {
+            if (!firebaseConfig) {
+                showStatus('Error: Configuración de Firebase no encontrada.', 'error');
+                return;
+            }
+
+            loadingAuth.classList.remove('hidden');
+
+            try {
+                const app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+                setLogLevel('Debug'); // Habilitar logs para depuración
+
+                // Autenticación con token personalizado o anónima
+                if (initialAuthToken) {
+                    await signInWithCustomToken(auth, initialAuthToken);
+                } else {
+                    await setPersistence(auth, browserSessionPersistence);
+                    await signInAnonymously(auth);
+                }
+
+                onAuthStateChanged(auth, (user) => {
+                    if (user) {
+                        userId = user.uid;
+                        userIdDisplay.textContent = userId;
+                        isAuthReady = true;
+                        toggleForm(true);
+                        initializeMap();
+                        setupRealtimeListener();
+                    } else {
+                        userId = crypto.randomUUID(); // Fallback temporal si no hay auth
+                        userIdDisplay.textContent = userId + ' (Anónimo)';
+                        showStatus('Advertencia: No se pudo autenticar, usando ID anónimo.', 'error');
+                        isAuthReady = true;
+                        toggleForm(true);
+                        initializeMap();
+                        setupRealtimeListener();
+                    }
+                    loadingAuth.classList.add('hidden');
+                });
+
+            } catch (error) {
+                console.error("Error al inicializar Firebase o autenticar:", error);
+                showStatus(`Error crítico al iniciar la app: ${error.message}`, 'error');
+                loadingAuth.classList.add('hidden');
+            }
+        }
+
+        // --- Geolocalización ---
+        function getGeolocation() {
+            return new Promise((resolve, reject) => {
+                gpsStatus.textContent = 'Obteniendo ubicación...';
+                gpsStatus.classList.remove('text-blue-600');
+                gpsStatus.classList.add('text-yellow-600');
+
+                if (navigator.geolocation) {
+                    navigator.geolocation.getCurrentPosition(
+                        (position) => {
+                            gpsStatus.textContent = '¡Ubicación obtenida!';
+                            gpsStatus.classList.remove('text-yellow-600');
+                            gpsStatus.classList.add('text-green-600');
+                            gpsCoordsDisplay.textContent = `Lat: ${position.coords.latitude.toFixed(6)}, Lng: ${position.coords.longitude.toFixed(6)}`;
+                            gpsCoordsDisplay.classList.remove('hidden');
+                            resolve({
+                                lat: position.coords.latitude,
+                                lng: position.coords.longitude
+                            });
+                        },
+                        (error) => {
+                            let msg = "Error de geolocalización. Asegúrate de tener el GPS activado.";
+                            if (error.code === 1) msg = "Acceso a GPS denegado por el usuario.";
+                            if (error.code === 2) msg = "Ubicación no disponible.";
+                            if (error.code === 3) msg = "Tiempo de espera agotado.";
+
+                            gpsStatus.textContent = `Error: ${msg}`;
+                            gpsStatus.classList.remove('text-yellow-600');
+                            gpsStatus.classList.add('text-red-600');
+                            reject(new Error(msg));
+                        },
+                        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+                    );
+                } else {
+                    gpsStatus.textContent = 'Error: Geolocalización no soportada por este navegador.';
+                    gpsStatus.classList.remove('text-yellow-600');
+                    gpsStatus.classList.add('text-red-600');
+                    reject(new Error('Geolocalización no soportada.'));
+                }
+            });
+        }
+
+        // --- Guardar Datos en Firestore ---
+        async function saveData(data) {
+            if (!db || !isAuthReady) {
+                showStatus('La aplicación aún no está lista. Inténtalo de nuevo.', 'error');
+                return;
+            }
+
+            const path = `/artifacts/${appId}/public/data/${COLLECTION_NAME}`;
+            const collectionRef = collection(db, path);
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Guardando...';
+
+            try {
+                await addDoc(collectionRef, {
+                    ...data,
+                    userId: userId,
+                    timestamp: serverTimestamp()
+                });
+                showStatus('Datos guardados exitosamente. Se reflejarán en el mapa.', 'success');
+                form.reset();
+                gpsStatus.textContent = 'Datos guardados.';
+                gpsCoordsDisplay.classList.add('hidden');
+            } catch (error) {
+                console.error("Error al guardar en Firestore:", error);
+                showStatus(`Error al guardar: ${error.message}`, 'error');
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Guardar Datos y Ubicación';
+            }
+        }
+
+        // --- Manejador de Formulario ---
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const data = {
+                fecha: document.getElementById('fecha').value,
+                ci: document.getElementById('ci').value,
+                nombreCompleto: document.getElementById('nombre').value,
+                etapaAvance: document.getElementById('etapaAvance').value,
+            };
+
+            showStatus('Iniciando proceso de obtención de ubicación...', 'info');
+
+            try {
+                const coords = await getGeolocation();
+                const fullData = { ...data, lat: coords.lat, lng: coords.lng };
+                await saveData(fullData);
+            } catch (error) {
+                console.error("Error en el proceso de guardado:", error);
+                showStatus(`No se pudo guardar: ${error.message}`, 'error');
+            }
+        });
+
+        // --- Configuración de Leaflet Map ---
+        function initializeMap() {
+            // Centro inicial (ejemplo: centro de Paraguay)
+            const initialCoords = [-23.4425, -58.4438];
+            const initialZoom = 6;
+
+            map = L.map('map').setView(initialCoords, initialZoom);
+
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            }).addTo(map);
+
+            // Añadir un control de escala
+            L.control.scale().addTo(map);
+        }
+
+        const markerGroup = L.layerGroup();
+
+        // --- Escucha en Tiempo Real (Firestore) ---
+        function setupRealtimeListener() {
+            if (!db || !isAuthReady) return;
+
+            const path = `/artifacts/${appId}/public/data/${COLLECTION_NAME}`;
+            const collectionRef = collection(db, path);
+            const q = query(collectionRef); // Puedes añadir .limit(100) o .orderBy() si lo necesitas, pero lo mantendremos simple para evitar errores de índice.
+
+            markerGroup.addTo(map);
+
+            onSnapshot(q, (snapshot) => {
+                if (!map) return;
+                
+                markerGroup.clearLayers();
+                let bounds = []; // Para ajustar el mapa
+
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    if (data.lat && data.lng) {
+                        const coords = [data.lat, data.lng];
+                        bounds.push(coords);
+                        
+                        // Formatear la fecha
+                        const dateObj = new Date(data.fecha + 'T00:00:00'); // Asume hora local a medianoche para evitar offset
+                        const formattedDate = dateObj.toLocaleDateString('es-ES', {
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric'
+                        });
+
+                        const popupContent = `
+                            <div style="font-family: 'Inter', sans-serif;">
+                                <strong style="color:#1f2937;">Fecha:</strong> ${formattedDate}<br>
+                                <strong style="color:#1f2937;">CI:</strong> ${data.ci}<br>
+                                <strong style="color:#1f2937;">Nombre:</strong> ${data.nombreCompleto}<br>
+                                <strong style="color:#1f2937;">Etapa:</strong> <span style="font-weight:bold; color:#059669;">${data.etapaAvance}</span><br>
+                                <hr style="margin:4px 0;">
+                                <em style="font-size:10px; color:#6b7280;">Registrado por: ${data.userId === userId ? 'Tú' : data.userId.substring(0, 8) + '...'}</em>
+                            </div>
+                        `;
+
+                        const marker = L.marker(coords).bindPopup(popupContent);
+                        markerGroup.addLayer(marker);
+                    }
+                });
+
+                showStatus(`Total de ${snapshot.size} registros cargados en el mapa.`, 'info');
+
+                // Si hay datos, ajustar el mapa para que muestre todos los puntos
+                if (bounds.length > 0) {
+                    map.fitBounds(bounds, { padding: [50, 50] });
+                }
+            }, (error) => {
+                console.error("Error en la escucha de Firestore:", error);
+                showStatus('Error al cargar datos del mapa en tiempo real.', 'error');
+            });
+        }
+
+        // --- Inicialización Principal ---
+        document.addEventListener('DOMContentLoaded', () => {
+            // Establecer la fecha actual por defecto en el campo de fecha
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('fecha').value = today;
+            initializeFirebase();
+        });
+
+    </script>
+</body>
+</html>
