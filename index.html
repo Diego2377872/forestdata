@@ -37,27 +37,32 @@
         #data-table-container tbody tr {
             cursor: pointer;
         }
-        /* Estilos para el modal */
+        /* Estilos para el modal (Actualizado: z-index más alto para superponerse al mapa) */
         .modal {
             display: none;
             position: fixed;
-            z-index: 50;
+            z-index: 1050;  /* Alto para estar por encima del mapa de Leaflet (que usa ~1000) */
             left: 0;
             top: 0;
             width: 100%;
             height: 100%;
             overflow: auto;
-            background-color: rgba(0,0,0,0.4);
+            background-color: rgba(0,0,0,0.5);  /* Backdrop más oscuro para mejor visibilidad */
         }
         .modal-content {
             background-color: #fefefe;
-            margin: 10% auto;
+            margin: 5% auto;  /* Centrado vertical mejorado */
             padding: 20px;
             border: 1px solid #888;
             width: 90%;
             max-width: 500px;
             border-radius: 0.5rem;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 0 0 1px rgba(0, 0, 0, 0.05);  /* Sombra más sutil */
+            animation: modalSlideIn 0.3s ease-out;  /* Animación suave de entrada */
+        }
+        @keyframes modalSlideIn {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
         }
         .close {
             color: #aaa;
@@ -71,13 +76,36 @@
             color: black;
             text-decoration: none;
         }
+        /* Footer copyright */
+        footer {
+            background-color: #f3f4f6;
+            border-top: 1px solid #e5e7eb;
+            padding: 1rem;
+            text-align: center;
+            font-size: 0.875rem;
+            color: #6b7280;
+        }
+        /* Animación suave para el icono forestal */
+        @keyframes sway {
+            0%, 100% { transform: rotate(-2deg); }
+            50% { transform: rotate(2deg); }
+        }
+        .header-icon {
+            animation: sway 3s ease-in-out infinite;
+            display: inline-block;
+        }
     </style>
 </head>
 <body class="min-h-screen">
-    <div class="container mx-auto p-4 md:p-8">
+    <!-- Copyright en Footer (Parte Inferior) -->
+    <footer class="fixed bottom-0 left-0 right-0">
+        <p>Elaborado por Diego Rodriguez © 2025</p>
+    </footer>
+
+    <div class="container mx-auto p-4 md:p-8 pb-20">  <!-- Padding bottom para footer fijo -->
         <header class="text-center mb-8">
-            <h1 class="text-3xl font-extrabold text-gray-900 md:text-4xl">
-                Carga de Datos de Campo
+            <h1 class="text-3xl font-extrabold text-gray-900 md:text-4xl flex items-center justify-center gap-3">
+                <span class="header-icon">🌲</span> Carga de Datos de Campo
             </h1>
             <p class="text-gray-600 mt-2">
                 Registro georreferenciado de actividades.
@@ -190,7 +218,7 @@
         </main>
     </div>
 
-    <!-- Modal de Edición -->
+    <!-- Modal de Edición (Actualizado para z-index alto) -->
     <div id="edit-modal" class="modal">
         <div class="modal-content">
             <span class="close">&times;</span>
@@ -244,7 +272,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, onAuthStateChanged, setPersistence, browserSessionPersistence } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, addDoc, onSnapshot, collection, query, serverTimestamp, updateDoc, doc, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";  // Agregado deleteDoc
+        import { getFirestore, addDoc, onSnapshot, collection, query, serverTimestamp, updateDoc, doc, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         import { setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // Tu configuración de Firebase
@@ -510,7 +538,7 @@
             }
         }
 
-        // --- NUEVA: Eliminar Registro ---
+        // --- Eliminar Registro (igual) ---
         async function deleteData(docId) {
             if (connectionError) {
                 // Modo demo: Remover de array local
@@ -533,7 +561,7 @@
             }
         }
 
-        // --- NUEVA: Exportar a Excel ---
+        // --- Exportar a Excel (igual) ---
         function exportToExcel() {
             if (allFieldData.length === 0) {
                 showStatus('No hay datos para exportar.', 'info');
@@ -705,7 +733,7 @@
             renderData();
         }
 
-        // --- Renderizado Tabla y Mapa (Actualizado con Eliminar) ---
+        // --- Renderizado Tabla y Mapa (igual) ---
         function renderMapAndTable(data) {
             if (!map) return;
             
