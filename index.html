@@ -12,6 +12,8 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
         integrity="sha205-l2p/9o/W1wQzKzB/t/fE8V9F/bL8Y2N2k0qj/gZ5b0+A6Zf9m4b+2+q9z"
         crossorigin=""/>
+    <!-- Carga de SheetJS para Export a Excel -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
         /* Estilos personalizados y configuración de tipografía */
         body { font-family: 'Inter', sans-serif; background-color: #f7f9fb; }
@@ -35,6 +37,40 @@
         #data-table-container tbody tr {
             cursor: pointer;
         }
+        /* Estilos para el modal */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 50;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.4);
+        }
+        .modal-content {
+            background-color: #fefefe;
+            margin: 10% auto;
+            padding: 20px;
+            border: 1px solid #888;
+            width: 90%;
+            max-width: 500px;
+            border-radius: 0.5rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .close:hover,
+        .close:focus {
+            color: black;
+            text-decoration: none;
+        }
     </style>
 </head>
 <body class="min-h-screen">
@@ -48,14 +84,13 @@
             </p>
         </header>
 
-        <!-- Banner de Modo Demo (Ahora solo se mostrará si hay un fallo de conexión) -->
+        <!-- Banner de Modo Demo -->
         <div id="demo-mode-banner" class="hidden mb-6 p-4 rounded-xl bg-red-100 border-2 border-red-500 shadow-md">
             <h3 class="font-bold text-red-800">⚠️ FALLO DE CONEXIÓN</h3>
             <p class="text-sm text-red-700 mt-1">
                 No se pudo conectar a Firebase. La aplicación funciona con **datos temporales** que no se guardarán. Por favor, revisa la configuración.
             </p>
         </div>
-        <!-- Fin Banner de Modo Demo -->
 
         <main class="grid grid-cols-1 lg:grid-cols-3 gap-8">
 
@@ -109,7 +144,7 @@
                             </span>
                         </p>
                         <p class="text-xs text-blue-600 mt-1 hidden" id="gps-coords"></p>
-                        <!-- Botón de reintento, útil si el usuario tiene el GPS apagado -->
+                        <!-- Botón de reintento -->
                         <div id="gps-retry-container" class="mt-2 hidden">
                              <button type="button" id="retry-gps-btn"
                                      class="px-3 py-1 text-xs font-semibold rounded-md bg-yellow-500 text-white hover:bg-yellow-600 transition duration-150">
@@ -118,7 +153,7 @@
                         </div>
                     </div>
 
-                    <!-- ID de Usuario (Para colaboración) -->
+                    <!-- ID de Usuario -->
                     <div id="user-info" class="text-xs text-gray-500 mb-4 p-2 bg-gray-100 rounded-lg">
                         Tu ID de Sesión: <span id="user-id-display" class="font-mono text-gray-700 break-all">Cargando...</span>
                     </div>
@@ -139,15 +174,65 @@
                 </p>
             </div>
             
-            <!-- Nueva Sección: Tabla de Datos -->
+            <!-- Sección: Tabla de Datos -->
             <div class="lg:col-span-3 mt-8">
-                <h2 class="text-xl font-semibold mb-4 text-gray-800">3. Registros en Tabla</h2>
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-semibold text-gray-800">3. Registros en Tabla (Editable)</h2>
+                    <button id="export-excel-btn" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition duration-200 shadow-md">
+                        Exportar a Excel
+                    </button>
+                </div>
                 <div id="data-table-container" class="bg-white p-6 rounded-xl shadow-lg border border-gray-100 overflow-x-auto">
                     <p class="text-gray-500 italic">Cargando datos...</p>
                 </div>
             </div>
 
         </main>
+    </div>
+
+    <!-- Modal de Edición -->
+    <div id="edit-modal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h3 class="text-xl font-bold mb-4 text-gray-800">Editar Registro</h3>
+            <form id="edit-form">
+                <input type="hidden" id="edit-doc-id">
+                <!-- Fecha -->
+                <div class="mb-4">
+                    <label for="edit-fecha" class="block text-sm font-medium text-gray-700 mb-1">Fecha de Toma de Datos</label>
+                    <input type="date" id="edit-fecha" required class="form-input">
+                </div>
+                <!-- C.I. -->
+                <div class="mb-4">
+                    <label for="edit-ci" class="block text-sm font-medium text-gray-700 mb-1">C.I. / Identificación</label>
+                    <input type="text" id="edit-ci" required class="form-input">
+                </div>
+                <!-- Nombre -->
+                <div class="mb-4">
+                    <label for="edit-nombre" class="block text-sm font-medium text-gray-700 mb-1">Nombre y Apellido</label>
+                    <input type="text" id="edit-nombre" required class="form-input">
+                </div>
+                <!-- Etapa -->
+                <div class="mb-4">
+                    <label for="edit-etapaAvance" class="block text-sm font-medium text-gray-700 mb-1">Etapa de Avance</label>
+                    <select id="edit-etapaAvance" required class="form-input bg-white">
+                        <option value="Inicio">Inicio de Trabajos</option>
+                        <option value="Proceso">En Proceso (50%)</option>
+                        <option value="Finalizacion">Casi Finalizado (90%)</option>
+                        <option value="Completado">Trabajo Completado (100%)</option>
+                    </select>
+                </div>
+                <!-- Coordenadas (solo lectura, para referencia) -->
+                <div class="mb-4 p-3 bg-gray-50 rounded-lg">
+                    <p class="text-sm font-medium text-gray-700">Coordenadas GPS (no editables):</p>
+                    <p id="edit-coords" class="text-xs text-gray-500 mt-1"></p>
+                </div>
+                <div class="flex justify-end space-x-2">
+                    <button type="button" id="cancel-edit-btn" class="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400">Cancelar</button>
+                    <button type="submit" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">Guardar Cambios</button>
+                </div>
+            </form>
+        </div>
     </div>
 
     <!-- Carga de Leaflet JS -->
@@ -159,18 +244,17 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, onAuthStateChanged, setPersistence, browserSessionPersistence } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, addDoc, onSnapshot, collection, query, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, addDoc, onSnapshot, collection, query, serverTimestamp, updateDoc, doc, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";  // Agregado deleteDoc
         import { setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // Tu configuración de Firebase hardcodeada
+        // Tu configuración de Firebase
         const firebaseConfig = {
             apiKey: "AIzaSyAScFFccOaYb4JpmNNB3sl9-7hdL7eNTGk",
             authDomain: "datawood-2025.firebaseapp.com",
             projectId: "datawood-2025",
             storageBucket: "datawood-2025.firebasestorage.app",
             messagingSenderId: "417334727561",
-            appId: "1:417334727561:web:bfb3b53cf670646b7f4758",
-            measurementId: "G-988K3QG59Y"  // Incluido para Analytics (opcional)
+            appId: "1:417334727561:web:bfb3b53cf670646b7f4758"
         };
 
         let db = null;
@@ -181,7 +265,7 @@
         let currentCoords = null; 
         let allFieldData = []; 
         let sortState = { key: 'timestamp', direction: 'desc' }; 
-        let connectionError = false; // Flag para manejar errores de conexión
+        let connectionError = false;
 
         const form = document.getElementById('data-form');
         const submitBtn = document.getElementById('submit-btn');
@@ -194,11 +278,15 @@
         const gpsRetryContainer = document.getElementById('gps-retry-container');
         const demoModeBanner = document.getElementById('demo-mode-banner');
 
-        // --- CONFIGURACIÓN DE ALMACENAMIENTO ---
-        // Colección simple en la raíz de Firestore
+        // Elementos del Modal y Export
+        const editModal = document.getElementById('edit-modal');
+        const editForm = document.getElementById('edit-form');
+        const closeModal = document.querySelector('.close');
+        const cancelEditBtn = document.getElementById('cancel-edit-btn');
+        const exportExcelBtn = document.getElementById('export-excel-btn');
+
         const COLLECTION_NAME = 'field_data_geolocalizados'; 
 
-        // Mapeo de colores para la etapa de avance
         const stageColors = {
             'Inicio': { bg: 'bg-red-500', text: 'text-red-700', hex: '#ef4444' },
             'Proceso': { bg: 'bg-yellow-500', text: 'text-yellow-700', hex: '#f59e0b' },
@@ -206,7 +294,7 @@
             'Completado': { bg: 'bg-green-500', text: 'text-green-700', hex: '#10b981' },
         };
 
-        // --- Utilidades UI ---
+        // --- Utilidades UI (igual que antes) ---
         function showStatus(message, type = 'info') {
             statusMessage.textContent = message;
             statusMessage.classList.remove('hidden', 'bg-red-100', 'text-red-700', 'bg-green-100', 'text-green-700', 'bg-yellow-100', 'text-yellow-700', 'bg-blue-100', 'text-blue-700');
@@ -233,7 +321,7 @@
             }
         }
 
-        // --- Configuración de Firebase / Modo Demo ---
+        // --- Inicialización Firebase (igual) ---
         async function initializeFirebase() {
             loadingAuth.classList.remove('hidden');
             
@@ -241,7 +329,7 @@
                 const app = initializeApp(firebaseConfig);
                 db = getFirestore(app);
                 auth = getAuth(app);
-                setLogLevel('Debug'); // Habilitar logs para depuración
+                setLogLevel('Debug');
 
                 await setPersistence(auth, browserSessionPersistence);
                 await signInAnonymously(auth);
@@ -259,7 +347,6 @@
                         demoModeBanner.classList.add('hidden');
                         showStatus('Firebase conectado exitosamente. ¡Listo para registrar datos!', 'success');
                     } else {
-                        // Fallback si la autenticación falla
                         userId = crypto.randomUUID(); 
                         userIdDisplay.textContent = userId + ' (Anónimo - Fallo Auth)';
                         showStatus('Advertencia: Fallo en la autenticación, usando ID anónimo. Revisa las reglas de seguridad.', 'error');
@@ -276,21 +363,20 @@
                 console.error("Error al inicializar Firebase o autenticar:", error);
                 showStatus(`Error crítico al iniciar la app: ${error.message}. Activando modo temporal.`, 'error');
                 
-                // Modo de Fallback (Simulación Demo)
                 connectionError = true;
                 userId = 'DEMO_USER_' + Math.random().toString(36).substring(2, 8).toUpperCase();
                 userIdDisplay.textContent = userId;
                 isAuthReady = true;
                 toggleForm(true);
                 initializeMap();
-                renderData(); // Inicializa la data vacía en el modo demo
+                renderData();
                 getLocationAndUpdateUI();
                 loadingAuth.classList.add('hidden');
                 demoModeBanner.classList.remove('hidden');
             }
         }
 
-        // --- Geolocalización (Promise interna) ---
+        // --- Geolocalización (igual) ---
         function getGeolocationPromise() {
             return new Promise((resolve, reject) => {
                 if (navigator.geolocation) {
@@ -305,7 +391,6 @@
             });
         }
 
-        // --- Geolocalización y Actualización de UI ---
         async function getLocationAndUpdateUI(isFormSubmission = false) {
             currentCoords = null; 
 
@@ -362,7 +447,7 @@
             }
         }
 
-        // --- Guardar Datos (Firestore o Demo) ---
+        // --- Guardar Nuevo (igual) ---
         async function saveData(data) {
             if (!isAuthReady) {
                 showStatus('La aplicación aún no está lista. Inténtalo de nuevo.', 'error');
@@ -380,20 +465,17 @@
                 };
 
                 if (connectionError) {
-                    // Modo de Fallback: Guardar en array en memoria
-                    record.id = allFieldData.length.toString(); // ID simulado
+                    record.id = allFieldData.length.toString();
                     allFieldData.push(record);
-                    renderData(); // Refrescar UI inmediatamente
+                    renderData();
                     showStatus('Datos guardados en MODO TEMPORAL. No serán persistentes.', 'error');
                 } else {
-                    // Modo Real: Guardar en Firestore (colección simple)
                     const collectionRef = collection(db, COLLECTION_NAME);
                     await addDoc(collectionRef, record);
                     showStatus(`Datos guardados exitosamente en Firestore. Colección: ${COLLECTION_NAME}`, 'success');
                 }
                 
                 form.reset();
-                // Limpiar coordenadas y estado después de un guardado exitoso
                 currentCoords = null;
                 gpsStatus.textContent = 'Haz clic en Guardar para obtener la ubicación.';
                 gpsStatus.classList.remove('text-green-600', 'text-red-600', 'text-yellow-600');
@@ -410,7 +492,81 @@
             }
         }
 
-        // --- Manejador de Formulario ---
+        // --- Editar Registro (igual) ---
+        async function editData(docId, data) {
+            if (connectionError) {
+                showStatus('Edición no disponible en modo temporal.', 'error');
+                return;
+            }
+
+            try {
+                const docRef = doc(db, COLLECTION_NAME, docId);
+                await updateDoc(docRef, data);
+                showStatus('Registro actualizado exitosamente.', 'success');
+                editModal.style.display = 'none';  // Cerrar modal
+            } catch (error) {
+                console.error("Error al editar:", error);
+                showStatus(`Error al editar: ${error.message}`, 'error');
+            }
+        }
+
+        // --- NUEVA: Eliminar Registro ---
+        async function deleteData(docId) {
+            if (connectionError) {
+                // Modo demo: Remover de array local
+                const index = allFieldData.findIndex(item => item.id === docId);
+                if (index > -1) {
+                    allFieldData.splice(index, 1);
+                    renderData();
+                    showStatus('Registro eliminado en MODO TEMPORAL.', 'success');
+                }
+                return;
+            }
+
+            try {
+                const docRef = doc(db, COLLECTION_NAME, docId);
+                await deleteDoc(docRef);
+                showStatus('Registro eliminado exitosamente.', 'success');
+            } catch (error) {
+                console.error("Error al eliminar:", error);
+                showStatus(`Error al eliminar: ${error.message}`, 'error');
+            }
+        }
+
+        // --- NUEVA: Exportar a Excel ---
+        function exportToExcel() {
+            if (allFieldData.length === 0) {
+                showStatus('No hay datos para exportar.', 'info');
+                return;
+            }
+
+            // Preparar datos para Excel
+            const exportData = allFieldData.map(item => {
+                let timestampText = 'N/A';
+                if (item.timestamp) {
+                    const dateObj = item.timestamp instanceof Date ? item.timestamp : (item.timestamp.toDate ? item.timestamp.toDate() : new Date(item.timestamp));
+                    timestampText = dateObj.toLocaleString('es-ES');
+                }
+                return {
+                    'Fecha': item.fecha,
+                    'Nombre': item.nombreCompleto,
+                    'C.I.': item.ci,
+                    'Etapa': item.etapaAvance,
+                    'Lat': item.lat,
+                    'Lng': item.lng,
+                    'Timestamp': timestampText,
+                    'User ID': item.userId
+                };
+            });
+
+            const ws = XLSX.utils.json_to_sheet(exportData);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Registros de Campo");
+            XLSX.writeFile(wb, "registros_campo.xlsx");
+            showStatus('Archivo Excel descargado exitosamente.', 'success');
+        }
+
+        // --- Manejador Formulario Nuevo (igual) ---
         form.addEventListener('submit', async (e) => {
             e.preventDefault();
             
@@ -437,13 +593,69 @@
             await saveData(fullData);
         });
         
-        // --- Manejador del botón de Reintento GPS ---
         retryGpsBtn.addEventListener('click', () => {
              getLocationAndUpdateUI();
         });
 
+        // --- Manejadores Modal (igual) ---
+        closeModal.addEventListener('click', () => {
+            editModal.style.display = 'none';
+        });
 
-        // --- Configuración de Leaflet Map ---
+        cancelEditBtn.addEventListener('click', () => {
+            editModal.style.display = 'none';
+        });
+
+        window.addEventListener('click', (e) => {
+            if (e.target === editModal) {
+                editModal.style.display = 'none';
+            }
+        });
+
+        editForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const docId = document.getElementById('edit-doc-id').value;
+            const updatedData = {
+                fecha: document.getElementById('edit-fecha').value,
+                ci: document.getElementById('edit-ci').value,
+                nombreCompleto: document.getElementById('edit-nombre').value,
+                etapaAvance: document.getElementById('edit-etapaAvance').value,
+            };
+            await editData(docId, updatedData);
+        });
+
+        // Manejador Export Excel
+        exportExcelBtn.addEventListener('click', exportToExcel);
+
+        // Función para abrir modal con datos
+        function openEditModal(item) {
+            document.getElementById('edit-doc-id').value = item.id;
+            document.getElementById('edit-fecha').value = item.fecha;
+            document.getElementById('edit-ci').value = item.ci;
+            document.getElementById('edit-nombre').value = item.nombreCompleto;
+            document.getElementById('edit-etapaAvance').value = item.etapaAvance;
+            document.getElementById('edit-coords').textContent = `${item.lat.toFixed(4)}, ${item.lng.toFixed(4)}`;
+            editModal.style.display = 'block';
+        }
+
+        // Función global para botón editar (desde onclick en tabla)
+        window.openEditModalFromRow = function(button) {
+            const row = button.closest('tr');
+            const itemStr = row.getAttribute('data-item');
+            const item = JSON.parse(itemStr.replace(/&#39;/g, "'"));
+            openEditModal(item);
+        };
+
+        // Función global para botón eliminar (desde onclick en tabla)
+        window.deleteFromRow = function(button) {
+            const row = button.closest('tr');
+            const docId = row.getAttribute('data-doc-id');
+            if (confirm('¿Estás seguro de que quieres eliminar este registro? Esta acción no se puede deshacer.')) {
+                deleteData(docId);
+            }
+        };
+
+        // --- Mapa (igual) ---
         function initializeMap() {
             const initialCoords = [-23.4425, -58.4438];
             const initialZoom = 6;
@@ -461,15 +673,13 @@
 
         const markerGroup = L.layerGroup();
 
-        // --- Lógica de Ordenamiento de la Tabla ---
+        // --- Ordenamiento (igual) ---
         function sortData(data, key, direction) {
             return data.sort((a, b) => {
                 let valA = a[key];
                 let valB = b[key];
 
-                // Manejo especial para Firestore Timestamp o Date en modo Fallback
                 if (key === 'timestamp') {
-                    // Convertir a milisegundos para comparación
                     valA = valA instanceof Date ? valA.getTime() : (valA && typeof valA.toMillis === 'function' ? valA.toMillis() : (valA || 0));
                     valB = valB instanceof Date ? valB.getTime() : (valB && typeof valB.toMillis === 'function' ? valB.toMillis() : (valB || 0));
                 }
@@ -492,10 +702,10 @@
                 sortState.key = key;
                 sortState.direction = 'desc';
             }
-            renderData(); // Llama a la función principal de renderizado
+            renderData();
         }
 
-        // --- Renderizado y Lógica de la Tabla y Mapa ---
+        // --- Renderizado Tabla y Mapa (Actualizado con Eliminar) ---
         function renderMapAndTable(data) {
             if (!map) return;
             
@@ -537,29 +747,27 @@
                 markerGroup.addLayer(marker);
             });
 
-            // Si hay datos, ajustar el mapa para que muestre todos los puntos
             if (bounds.length > 0) {
                 map.fitBounds(bounds, { padding: [50, 50] });
             }
             
-            // Renderizado de la tabla
+            // Render Tabla
             const container = document.getElementById('data-table-container');
             if (data.length === 0) {
                 container.innerHTML = '<p class="text-gray-500 italic">No hay datos de campo registrados todavía.</p>';
                 return;
             }
 
-            // 1. Ordenar los datos
             const sortedData = sortData([...data], sortState.key, sortState.direction);
 
-            // 2. Crear el encabezado de la tabla
             const headers = [
                 { id: 'fecha', name: 'Fecha' },
                 { id: 'nombreCompleto', name: 'Nombre' },
                 { id: 'ci', name: 'C.I.' },
                 { id: 'etapaAvance', name: 'Etapa' },
                 { id: 'lat', name: 'Lat/Lng' },
-                { id: 'timestamp', name: 'Registro' }
+                { id: 'timestamp', name: 'Registro' },
+                { id: 'actions', name: 'Acciones' }
             ];
 
             let tableHTML = `
@@ -568,7 +776,7 @@
                         <tr>
                             ${headers.map(header => {
                                 let sortIcon = '';
-                                if (sortState.key === header.id) {
+                                if (sortState.key === header.id && header.id !== 'actions') {
                                     sortIcon = sortState.direction === 'asc' 
                                         ? '<span class="ml-1 text-xs">▲</span>' 
                                         : '<span class="ml-1 text-xs">▼</span>';
@@ -576,7 +784,7 @@
                                 
                                 return `
                                     <th scope="col" data-key="${header.id}" 
-                                        class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-200 transition duration-150">
+                                        class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider ${header.id === 'actions' ? '' : 'cursor-pointer hover:bg-gray-200 transition duration-150'}">
                                         ${header.name} ${sortIcon}
                                     </th>
                                 `;
@@ -589,7 +797,6 @@
                             const colorConfig = stageColors[stage];
                             const colorClass = colorConfig?.text || 'text-gray-700';
 
-                            // Formatear Timestamp (si existe)
                             let timestampText = 'N/A';
                             let dateObj = null;
                             if (connectionError && item.timestamp instanceof Date) {
@@ -607,13 +814,17 @@
                             const latLngText = `${item.lat.toFixed(4)}, ${item.lng.toFixed(4)}`;
 
                             return `
-                                <tr class="hover:bg-blue-50/50 transition duration-150" data-lat="${item.lat}" data-lng="${item.lng}">
+                                <tr class="hover:bg-blue-50/50 transition duration-150" data-lat="${item.lat}" data-lng="${item.lng}" data-item='${JSON.stringify(item).replace(/'/g, "&#39;")}' data-doc-id="${item.id}">
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${item.fecha}</td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${item.nombreCompleto}</td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${item.ci}</td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm font-semibold ${colorClass}">${item.etapaAvance}</td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${latLngText}</td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${timestampText}</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                        <button onclick="openEditModalFromRow(this)" class="text-blue-600 hover:text-blue-900 text-xs font-medium mr-2">Editar</button>
+                                        <button onclick="deleteFromRow(this)" class="text-red-600 hover:text-red-900 text-xs font-medium">Eliminar</button>
+                                    </td>
                                 </tr>
                             `;
                         }).join('')}
@@ -623,54 +834,54 @@
 
             container.innerHTML = tableHTML;
 
-            // 3. Adjuntar manejadores de eventos de ordenación y click de fila
+            // Eventos para sort y click fila (igual)
             container.querySelectorAll('th[data-key]').forEach(th => {
-                th.addEventListener('click', () => {
-                    const key = th.getAttribute('data-key');
-                    handleSort(key);
-                });
+                if (th.getAttribute('data-key') !== 'actions') {
+                    th.addEventListener('click', () => {
+                        const key = th.getAttribute('data-key');
+                        handleSort(key);
+                    });
+                }
             });
 
-             // 4. Agregar funcionalidad para centrar mapa al hacer clic en fila
+            // Click en fila para centrar mapa
             container.querySelectorAll('tbody tr').forEach(row => {
-                row.addEventListener('click', () => {
-                    const lat = parseFloat(row.getAttribute('data-lat'));
-                    const lng = parseFloat(row.getAttribute('data-lng'));
-                    if (map && !isNaN(lat) && !isNaN(lng)) {
-                        map.setView([lat, lng], 14); 
+                row.addEventListener('click', (e) => {
+                    if (e.target.tagName !== 'BUTTON') {  // No centrar si clic en botón
+                        const lat = parseFloat(row.getAttribute('data-lat'));
+                        const lng = parseFloat(row.getAttribute('data-lng'));
+                        if (map && !isNaN(lat) && !isNaN(lng)) {
+                            map.setView([lat, lng], 14); 
+                        }
                     }
                 });
             });
         }
         
-        // Función unificada para renderizar UI
         function renderData() {
             renderMapAndTable(allFieldData);
             showStatus(`Total de ${allFieldData.length} registros cargados.`, 'info');
         }
 
-
-        // --- Escucha en Tiempo Real (Firestore o Demo) ---
+        // --- Listener Realtime (igual) ---
         function setupRealtimeListener() {
             if (connectionError) {
-                // En modo de fallback, no hay listener en tiempo real.
                 renderData();
                 return;
             }
 
             if (!db || !isAuthReady) return;
 
-            // Colección simple en la raíz
             const collectionRef = collection(db, COLLECTION_NAME);
             const q = query(collectionRef); 
 
             onSnapshot(q, (snapshot) => {
-                allFieldData = []; // Reiniciar data array
+                allFieldData = [];
 
-                snapshot.forEach(doc => {
-                    const data = doc.data();
+                snapshot.forEach(docSnap => {
+                    const data = docSnap.data();
                     if (data.lat && data.lng) {
-                        const fullData = { ...data, id: doc.id, lat: data.lat, lng: data.lng };
+                        const fullData = { ...data, id: docSnap.id, lat: data.lat, lng: data.lng };
                         allFieldData.push(fullData);
                     }
                 });
@@ -680,14 +891,13 @@
             }, (error) => {
                 console.error("Error en la escucha de Firestore:", error);
                 showStatus('Error al cargar datos del mapa en tiempo real.', 'error');
-                connectionError = true; // Activar modo temporal si falla el listener
+                connectionError = true;
                 renderData();
             });
         }
 
-        // --- Inicialización Principal ---
+        // --- Inicialización ---
         document.addEventListener('DOMContentLoaded', () => {
-            // Establecer la fecha actual por defecto en el campo de fecha
             const today = new Date().toISOString().split('T')[0];
             document.getElementById('fecha').value = today;
             initializeFirebase();
