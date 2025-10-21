@@ -158,17 +158,20 @@
     <!-- Carga de Firebase SDKs -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, setPersistence, browserSessionPersistence } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged, setPersistence, browserSessionPersistence } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, addDoc, onSnapshot, collection, query, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         import { setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // Global variables provided by the environment
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        
-        // CONFIGURACIÓN DE FIREBASE (USANDO CONFIGURACIÓN PROPORCIONADA POR EL USUARIO COMO FALLBACK)
-        const FALLBACK_FIREBASE_CONFIG_JSON = '{"apiKey":"AIzaSyCjn4LjXHeQT6vm10j5sArLBc4wMMsDK1c","authDomain":"datawood-7bce8.firebaseapp.com","projectId":"datawood-7bce8","storageBucket":"datawood-7bce8.firebasestorage.app","messagingSenderId":"885328297235","appId":"1:885328297235:web:c90c366672ef37a1a1aee6","measurementId":"G-988K3QG59Y"}';
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : JSON.parse(FALLBACK_FIREBASE_CONFIG_JSON);
-        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+        // Tu configuración de Firebase hardcodeada
+        const firebaseConfig = {
+            apiKey: "AIzaSyAScFFccOaYb4JpmNNB3sl9-7hdL7eNTGk",
+            authDomain: "datawood-2025.firebaseapp.com",
+            projectId: "datawood-2025",
+            storageBucket: "datawood-2025.firebasestorage.app",
+            messagingSenderId: "417334727561",
+            appId: "1:417334727561:web:bfb3b53cf670646b7f4758",
+            measurementId: "G-988K3QG59Y"  // Incluido para Analytics (opcional)
+        };
 
         let db = null;
         let auth = null;
@@ -192,8 +195,7 @@
         const demoModeBanner = document.getElementById('demo-mode-banner');
 
         // --- CONFIGURACIÓN DE ALMACENAMIENTO ---
-        // Aquí puedes cambiar el nombre de la colección (tabla) de Firestore donde se guardarán los registros.
-        // Los datos se almacenarán en la ruta: /artifacts/__app_id/public/data/{COLLECTION_NAME}
+        // Colección simple en la raíz de Firestore
         const COLLECTION_NAME = 'field_data_geolocalizados'; 
 
         // Mapeo de colores para la etapa de avance
@@ -241,13 +243,8 @@
                 auth = getAuth(app);
                 setLogLevel('Debug'); // Habilitar logs para depuración
 
-                // Autenticación con token personalizado o anónima
-                if (initialAuthToken) {
-                    await signInWithCustomToken(auth, initialAuthToken);
-                } else {
-                    await setPersistence(auth, browserSessionPersistence);
-                    await signInAnonymously(auth);
-                }
+                await setPersistence(auth, browserSessionPersistence);
+                await signInAnonymously(auth);
 
                 onAuthStateChanged(auth, (user) => {
                     loadingAuth.classList.add('hidden');
@@ -260,8 +257,9 @@
                         setupRealtimeListener();
                         getLocationAndUpdateUI();
                         demoModeBanner.classList.add('hidden');
+                        showStatus('Firebase conectado exitosamente. ¡Listo para registrar datos!', 'success');
                     } else {
-                        // Fallback si la autenticación falla, pero la configuración es válida
+                        // Fallback si la autenticación falla
                         userId = crypto.randomUUID(); 
                         userIdDisplay.textContent = userId + ' (Anónimo - Fallo Auth)';
                         showStatus('Advertencia: Fallo en la autenticación, usando ID anónimo. Revisa las reglas de seguridad.', 'error');
@@ -388,9 +386,8 @@
                     renderData(); // Refrescar UI inmediatamente
                     showStatus('Datos guardados en MODO TEMPORAL. No serán persistentes.', 'error');
                 } else {
-                    // Modo Real: Guardar en Firestore
-                    const path = `/artifacts/${appId}/public/data/${COLLECTION_NAME}`;
-                    const collectionRef = collection(db, path);
+                    // Modo Real: Guardar en Firestore (colección simple)
+                    const collectionRef = collection(db, COLLECTION_NAME);
                     await addDoc(collectionRef, record);
                     showStatus(`Datos guardados exitosamente en Firestore. Colección: ${COLLECTION_NAME}`, 'success');
                 }
@@ -663,8 +660,8 @@
 
             if (!db || !isAuthReady) return;
 
-            const path = `/artifacts/${appId}/public/data/${COLLECTION_NAME}`;
-            const collectionRef = collection(db, path);
+            // Colección simple en la raíz
+            const collectionRef = collection(db, COLLECTION_NAME);
             const q = query(collectionRef); 
 
             onSnapshot(q, (snapshot) => {
