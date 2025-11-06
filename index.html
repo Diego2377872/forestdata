@@ -4,8 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Levantamiento de Datos de Campo con GPS</title>
-    <!-- Icono forestal como favicon -->
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌲</text></svg>">
     <!-- Carga de Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Carga de la tipografía Inter -->
@@ -18,30 +16,16 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
         /* Estilos personalizados y configuración de tipografía */
-        body {
-            font-family: 'Inter', sans-serif;
-            background: linear-gradient(135deg, #f0f4f8 0%, #d9e2ec 100%);
-            min-height: 100vh;
-        }
+        body { font-family: 'Inter', sans-serif; background-color: #f7f9fb; }
         .form-input {
-            @apply w-full p-4 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300 ease-in-out bg-white/80 backdrop-blur-sm;
+            @apply w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 ease-in-out;
         }
         #map {
             height: 50vh; /* Altura del mapa responsiva */
             min-height: 300px;
             width: 100%;
-            border-radius: 1rem;
-            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-            position: relative; /* Para overlay del spinner */
-            background: #ffffff;
-            border: 1px solid rgba(255, 255, 255, 0.2);
-        }
-        #map-loading {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            z-index: 10;
+            border-radius: 0.75rem; /* rounded-xl */
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); /* shadow-lg */
         }
         /* Estilo para el icono div custom de Leaflet */
         .custom-marker {
@@ -49,313 +33,252 @@
             background: none !important;
             border: none !important;
         }
-        /* Estilos para el modal (Actualizado: z-index más alto para superponerse al mapa, con glassmorphism) */
+        /* Estilo para filas de tabla clickeables */
+        #data-table-container tbody tr {
+            cursor: pointer;
+        }
+        /* Estilos para el modal (Actualizado: z-index más alto para superponerse al mapa) */
         .modal {
             display: none;
             position: fixed;
-            z-index: 1050; /* Alto para estar por encima del mapa de Leaflet (que usa ~1000) */
+            z-index: 1050;  /* Alto para estar por encima del mapa de Leaflet (que usa ~1000) */
             left: 0;
             top: 0;
             width: 100%;
             height: 100%;
             overflow: auto;
-            background-color: rgba(0,0,0,0.6); /* Backdrop más oscuro para mejor visibilidad */
+            background-color: rgba(0,0,0,0.5);  /* Backdrop más oscuro para mejor visibilidad */
         }
         .modal-content {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(10px);
-            margin: 5% auto; /* Centrado vertical mejorado */
-            padding: 2rem;
-            border: 1px solid rgba(255, 255, 255, 0.2);
+            background-color: #fefefe;
+            margin: 5% auto;  /* Centrado vertical mejorado */
+            padding: 20px;
+            border: 1px solid #888;
             width: 90%;
             max-width: 500px;
-            border-radius: 1rem;
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-            animation: modalSlideIn 0.4s cubic-bezier(0.16, 1, 0.3, 1); /* Animación suave de entrada */
+            border-radius: 0.5rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 0 0 1px rgba(0, 0, 0, 0.05);  /* Sombra más sutil */
+            animation: modalSlideIn 0.3s ease-out;  /* Animación suave de entrada */
         }
         @keyframes modalSlideIn {
-            from { opacity: 0; transform: translateY(-30px) scale(0.95); }
-            to { opacity: 1; transform: translateY(0) scale(1); }
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
         }
         .close {
-            color: #9ca3af;
+            color: #aaa;
             float: right;
-            font-size: 1.75rem;
-            font-weight: 300;
+            font-size: 28px;
+            font-weight: bold;
             cursor: pointer;
-            transition: color 0.2s ease;
         }
         .close:hover,
         .close:focus {
-            color: #374151;
+            color: black;
+            text-decoration: none;
         }
-        /* Footer copyright (mejorado para móviles) */
+        /* Footer copyright */
         footer {
-            background: rgba(255, 255, 255, 0.8);
-            backdrop-filter: blur(10px);
-            border-top: 1px solid rgba(0, 0, 0, 0.1);
+            background-color: #f3f4f6;
+            border-top: 1px solid #e5e7eb;
             padding: 1rem;
             text-align: center;
             font-size: 0.875rem;
             color: #6b7280;
         }
-        @media (max-width: 768px) {
-            footer { padding: 0.75rem; font-size: 0.75rem; }
-        }
         /* Animación suave para el icono forestal */
         @keyframes sway {
-            0%, 100% { transform: rotate(-3deg); }
-            50% { transform: rotate(3deg); }
+            0%, 100% { transform: rotate(-2deg); }
+            50% { transform: rotate(2deg); }
         }
         .header-icon {
-            animation: sway 4s ease-in-out infinite;
+            animation: sway 3s ease-in-out infinite;
             display: inline-block;
-            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));
-        }
-        /* Animación para tabla al filtrar */
-        @keyframes fadeInUp {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        .table-fade-in {
-            animation: fadeInUp 0.5s cubic-bezier(0.16, 1, 0.3, 1);
-        }
-        /* Spinner mejorado */
-        .spinner {
-            border: 3px solid #f3f4f6;
-            border-top: 3px solid #3b82f6;
-            border-radius: 50%;
-            width: 24px;
-            height: 24px;
-            animation: spin 0.8s linear infinite;
-        }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-        /* Banner de estado offline (glassmorphism) */
-        .offline-banner {
-            @apply mb-6 p-4 rounded-xl bg-white/80 backdrop-blur-sm border border-orange-200 shadow-xl;
-        }
-        .offline-banner h3 {
-            @apply font-bold text-orange-800;
-        }
-        .offline-banner p {
-            @apply text-sm text-orange-700 mt-1;
-        }
-        /* Estilos para paginación (originales) */
-        .pagination {
-            @apply flex justify-center items-center space-x-2 mt-6;
-        }
-        .pagination button {
-            @apply px-3 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition duration-150;
-        }
-        .pagination button.active {
-            @apply bg-blue-600 text-white;
-        }
-        .pagination button:disabled {
-            @apply bg-gray-100 text-gray-400 cursor-not-allowed;
-        }
-        /* Cards con glassmorphism */
-        .card {
-            background: rgba(255, 255, 255, 0.9);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            border-radius: 1rem;
-            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-        }
-        .card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15);
-        }
-        /* Tabla moderna */
-        table {
-            @apply bg-white/90 backdrop-blur-sm rounded-xl overflow-hidden;
-        }
-        th {
-            @apply bg-gradient-to-r from-gray-50 to-gray-100 text-gray-700 font-semibold py-4 px-6;
-        }
-        td {
-            @apply py-4 px-6 border-t border-gray-100;
-        }
-        tr:hover {
-            @apply bg-blue-50/30;
-        }
-        /* Header moderno */
-        header h1 {
-            background: linear-gradient(135deg, #3b82f6, #1d4ed8);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
         }
     </style>
 </head>
 <body class="min-h-screen">
     <!-- Copyright en Footer (Parte Inferior) -->
-    <footer class="fixed bottom-0 left-0 right-0 card z-10">
-        <p>Elaborado por Diego Rodriguez © 2025</p>
+    <footer class="fixed bottom-0 left-0 right-0">
+        <p>Elaborado por Diego Rodriguez © 2025 roddieg@gmail.com</p>
     </footer>
-    <div class="container mx-auto p-4 md:p-8 pb-20"> <!-- Padding bottom para footer fijo -->
-        <header class="relative text-center mb-8 card p-8">
-            <div class="absolute top-4 left-4">
-                <span class="header-icon text-5xl">🌲</span>
-            </div>
-            <h1 class="text-4xl md:text-5xl font-black mb-4">
-                Carga de Datos de Campo
+
+    <div class="container mx-auto p-4 md:p-8 pb-20">  <!-- Padding bottom para footer fijo -->
+        <header class="text-center mb-8">
+            <h1 class="text-3xl font-extrabold text-gray-900 md:text-4xl flex items-center justify-center gap-3">
+                <span class="header-icon">🌲</span> Carga de Datos de Campo
             </h1>
-            <p class="text-gray-600 text-lg max-w-2xl mx-auto">
-                Registro georreferenciado de actividades con GPS en tiempo real.
+            <p class="text-gray-600 mt-2">
+                Registro georreferenciado de actividades.
             </p>
         </header>
+
         <!-- Banner de Modo Demo -->
-        <div id="demo-mode-banner" class="hidden mb-6 p-4 rounded-xl bg-red-50/80 backdrop-blur-sm border-2 border-red-200 shadow-xl card">
-            <h3 class="font-bold text-red-800 flex items-center gap-2">⚠️ FALLO DE CONEXIÓN</h3>
+        <div id="demo-mode-banner" class="hidden mb-6 p-4 rounded-xl bg-red-100 border-2 border-red-500 shadow-md">
+            <h3 class="font-bold text-red-800">⚠️ FALLO DE CONEXIÓN</h3>
             <p class="text-sm text-red-700 mt-1">
                 No se pudo conectar a Firebase. La aplicación funciona con **datos temporales** que no se guardarán. Por favor, revisa la configuración.
             </p>
         </div>
-        <!-- Banner de Modo Offline -->
-        <div id="offline-banner" class="hidden mb-6 offline-banner card">
-            <h3 class="flex items-center gap-2">📴 Modo Offline Activado</h3>
-            <p class="text-sm text-orange-700 mt-1">
-                Los datos se guardan localmente y se sincronizarán automáticamente cuando estés en línea. <span id="pending-sync-count" class="font-semibold">0 pendientes</span>.
-            </p>
-        </div>
+
         <main class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+
             <!-- Columna 1: Formulario de Recolección de Datos -->
-            <div class="lg:col-span-1 card p-8 h-fit">
-                <h2 class="text-2xl font-bold mb-6 text-gray-800 flex items-center gap-2">1. Registrar Nueva Toma <span class="text-blue-500">📝</span></h2>
-                <div id="loading-auth" class="text-center p-6 bg-yellow-50/80 rounded-xl text-yellow-700 card">
+            <div class="lg:col-span-1 bg-white p-6 rounded-xl shadow-lg border border-gray-100 h-fit">
+                <h2 class="text-xl font-semibold mb-6 text-gray-800">1. Registrar Nueva Toma</h2>
+
+                <div id="loading-auth" class="text-center p-4 bg-yellow-50 rounded-lg text-yellow-700">
                     Cargando autenticación y mapa...
                 </div>
-                <div id="status-message" class="p-4 mb-6 rounded-xl font-semibold text-sm hidden card" role="alert"></div>
+
+                <div id="status-message" class="p-3 mb-4 rounded-lg font-medium text-sm hidden" role="alert"></div>
+
                 <form id="data-form">
                     <!-- Fecha de Toma de Datos -->
-                    <div class="mb-6">
-                        <label for="fecha" class="block text-sm font-semibold text-gray-700 mb-2">Fecha de Toma de Datos</label>
-                        <input type="date" id="fecha" required class="form-input shadow-sm">
+                    <div class="mb-4">
+                        <label for="fecha" class="block text-sm font-medium text-gray-700 mb-1">Fecha de Toma de Datos</label>
+                        <input type="date" id="fecha" required class="form-input">
                     </div>
-                    <!-- C.I. (Cédula de Identidad) -->
-                    <div class="mb-6">
-                        <label for="ci" class="block text-sm font-semibold text-gray-700 mb-2">C.I. / Identificación</label>
-                        <input type="text" id="ci" placeholder="Ingrese C.I. o DNI" required class="form-input shadow-sm">
+
+                    <!-- Nº cédula Beneficiario/a -->
+                    <div class="mb-4">
+                        <label for="cedula" class="block text-sm font-medium text-gray-700 mb-1">Nº cédula Beneficiario/a</label>
+                        <input type="text" id="cedula" placeholder="Ingrese Nº cédula" required class="form-input">
                     </div>
-                    <!-- Nombre y Apellido -->
-                    <div class="mb-6">
-                        <label for="nombre" class="block text-sm font-semibold text-gray-700 mb-2">Nombre y Apellido</label>
-                        <input type="text" id="nombre" placeholder="Nombre completo" required class="form-input shadow-sm">
+
+                    <!-- Nombre Beneficiario/a -->
+                    <div class="mb-4">
+                        <label for="nombreBeneficiario" class="block text-sm font-medium text-gray-700 mb-1">Nombre Beneficiario/a</label>
+                        <input type="text" id="nombreBeneficiario" placeholder="Nombre completo" required class="form-input">
                     </div>
-                    <!-- Etapa de Avance -->
-                    <div class="mb-6">
-                        <label for="etapaAvance" class="block text-sm font-semibold text-gray-700 mb-2">Etapa de Avance</label>
-                        <select id="etapaAvance" required class="form-input bg-white shadow-sm">
-                            <option value="" disabled selected>Seleccione la etapa</option>
-                            <option value="Inicio">Inicio de Trabajos</option>
-                            <option value="Proceso">En Proceso (50%)</option>
-                            <option value="Finalizacion">Casi Finalizado (90%)</option>
-                            <option value="Completado">Trabajo Completado (100%)</option>
+
+                    <!-- Actividad Realizada -->
+                    <div class="mb-4">
+                        <label for="actividadRealizada" class="block text-sm font-medium text-gray-700 mb-1">Actividad Realizada</label>
+                        <select id="actividadRealizada" required class="form-input bg-white">
+                            <option value="" disabled selected>Seleccione la actividad</option>
+                            <option value="Rastra">Rastra</option>
+                            <option value="Subsolado">Subsolado</option>
+                            <option value="Encalado">Encalado</option>
+                            <option value="Plantación">Plantación</option>
+                            <option value="Fertilización">Fertilización</option>
+                            <option value="Aplicación de gel">Aplicación de gel</option>
+                            <option value="Riego">Riego</option>
+                            <option value="Control de hormigas">Control de hormigas</option>
+                            <option value="Carpida">Carpida</option>
+                            <option value="Muestra de suelo">Muestra de suelo</option>
+                            <option value="Inventario forestal">Inventario forestal</option>
                         </select>
                     </div>
+
+                    <!-- Nombre del Técnico o Puntero -->
+                    <div class="mb-4">
+                        <label for="tecnicoPuntero" class="block text-sm font-medium text-gray-700 mb-1">Nombre del Técnico o Puntero</label>
+                        <input type="text" id="tecnicoPuntero" placeholder="Ingrese nombre" required class="form-input">
+                    </div>
+
                     <!-- Ubicación GPS (se llenará automáticamente) -->
-                    <div class="mb-6 p-4 bg-blue-50/80 rounded-xl border border-blue-200 card">
-                        <p class="text-sm font-semibold text-blue-700">
+                    <div class="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                        <p class="text-sm font-medium text-blue-700">
                             <span class="font-bold">Ubicación GPS:</span>
-                            <span id="gps-status" class="ml-2 font-normal text-sm text-blue-600">
+                            <span id="gps-status" class="ml-2 font-normal text-xs text-blue-600">
                                 Haz clic en Guardar para obtener la ubicación.
                             </span>
                         </p>
-                        <p class="text-sm text-blue-600 mt-2 hidden" id="gps-coords"></p>
+                        <p class="text-xs text-blue-600 mt-1 hidden" id="gps-coords"></p>
                         <!-- Botón de reintento -->
-                        <div id="gps-retry-container" class="mt-3 hidden">
+                        <div id="gps-retry-container" class="mt-2 hidden">
                              <button type="button" id="retry-gps-btn"
                                      class="px-3 py-1 text-xs font-semibold rounded-md bg-yellow-500 text-white hover:bg-yellow-600 transition duration-150">
                                  Reintentar GPS
                              </button>
                         </div>
                     </div>
+
                     <!-- ID de Usuario -->
-                    <div id="user-info" class="text-sm text-gray-500 mb-6 p-3 bg-gray-100/80 rounded-xl card">
+                    <div id="user-info" class="text-xs text-gray-500 mb-4 p-2 bg-gray-100 rounded-lg">
                         Tu ID de Sesión: <span id="user-id-display" class="font-mono text-gray-700 break-all">Cargando...</span>
                     </div>
+
                     <button type="submit" id="submit-btn" disabled
                             class="w-full bg-blue-600 text-white p-3 rounded-lg font-bold hover:bg-blue-700 transition duration-200 shadow-md disabled:bg-gray-400">
                         Guardar Datos y Ubicación
                     </button>
                 </form>
             </div>
+
             <!-- Columna 2/3: Mapa de Datos Registrados -->
-            <div class="lg:col-span-2 card p-6">
-                <div class="flex justify-between items-center mb-6">
-                    <h2 class="text-2xl font-bold text-gray-800 flex items-center gap-2">2. Mapa de Registros Totales <span class="text-green-500">🗺️</span></h2>
-                    <button id="center-my-location-btn" class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition duration-200 shadow-md text-sm hidden">
-                        Centrar en Mi Ubicación
-                    </button>
-                </div>
-                <div id="map">
-                    <div id="map-loading" class="spinner"></div>
-                </div>
-                <p class="text-sm text-gray-500 mt-4 p-3 bg-gray-100/80 rounded-xl card">
-                    Los puntos en el mapa son los datos registrados por todos los usuarios. Usa el control superior derecho para cambiar a vista satélite.
+            <div class="lg:col-span-2">
+                <h2 class="text-xl font-semibold mb-4 text-gray-800">2. Mapa de Registros Totales</h2>
+                <div id="map"></div>
+                <p class="text-xs text-gray-500 mt-3 p-2 bg-gray-100 rounded-lg">
+                    Los puntos en el mapa son los datos registrados por todos los usuarios en esta aplicación.
                 </p>
             </div>
-          
+            
             <!-- Sección: Tabla de Datos -->
-            <div class="lg:col-span-3 mt-8 card p-8">
-                <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-                    <div>
-                        <h2 class="text-2xl font-bold text-gray-800 flex items-center gap-2">3. Registros en Tabla (Editable) <span class="text-purple-500">📊</span></h2>
-                        <p id="records-count" class="text-sm text-gray-500">Cargando datos...</p>
-                    </div>
-                    <div class="flex gap-2">
-                        <input type="text" id="table-search" placeholder="Buscar por nombre, CI o etapa..." class="px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 w-64">
-                        <button id="export-excel-btn" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition duration-200 shadow-md">
-                            Exportar a Excel
-                        </button>
-                    </div>
+            <div class="lg:col-span-3 mt-8">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-semibold text-gray-800">3. Registros en Tabla (Editable)</h2>
+                    <button id="export-excel-btn" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition duration-200 shadow-md">
+                        Exportar a Excel
+                    </button>
                 </div>
-                <div id="data-table-container" class="overflow-x-auto">
+                <div id="data-table-container" class="bg-white p-6 rounded-xl shadow-lg border border-gray-100 overflow-x-auto">
                     <p class="text-gray-500 italic">Cargando datos...</p>
                 </div>
             </div>
+
         </main>
     </div>
+
     <!-- Modal de Edición (Actualizado para z-index alto) -->
     <div id="edit-modal" class="modal">
-        <div class="modal-content card">
+        <div class="modal-content">
             <span class="close">&times;</span>
-            <h3 class="text-2xl font-bold mb-6 text-gray-800">Editar Registro</h3>
+            <h3 class="text-xl font-bold mb-4 text-gray-800">Editar Registro</h3>
             <form id="edit-form">
                 <input type="hidden" id="edit-doc-id">
                 <!-- Fecha -->
-                <div class="mb-6">
-                    <label for="edit-fecha" class="block text-sm font-semibold text-gray-700 mb-2">Fecha de Toma de Datos</label>
-                    <input type="date" id="edit-fecha" required class="form-input shadow-sm">
+                <div class="mb-4">
+                    <label for="edit-fecha" class="block text-sm font-medium text-gray-700 mb-1">Fecha de Toma de Datos</label>
+                    <input type="date" id="edit-fecha" required class="form-input">
                 </div>
-                <!-- C.I. -->
-                <div class="mb-6">
-                    <label for="edit-ci" class="block text-sm font-semibold text-gray-700 mb-2">C.I. / Identificación</label>
-                    <input type="text" id="edit-ci" required class="form-input shadow-sm">
+                <!-- Nº cédula Beneficiario/a -->
+                <div class="mb-4">
+                    <label for="edit-cedula" class="block text-sm font-medium text-gray-700 mb-1">Nº cédula Beneficiario/a</label>
+                    <input type="text" id="edit-cedula" required class="form-input">
                 </div>
-                <!-- Nombre -->
-                <div class="mb-6">
-                    <label for="edit-nombre" class="block text-sm font-semibold text-gray-700 mb-2">Nombre y Apellido</label>
-                    <input type="text" id="edit-nombre" required class="form-input shadow-sm">
+                <!-- Nombre Beneficiario/a -->
+                <div class="mb-4">
+                    <label for="edit-nombreBeneficiario" class="block text-sm font-medium text-gray-700 mb-1">Nombre Beneficiario/a</label>
+                    <input type="text" id="edit-nombreBeneficiario" required class="form-input">
                 </div>
-                <!-- Etapa -->
-                <div class="mb-6">
-                    <label for="edit-etapaAvance" class="block text-sm font-semibold text-gray-700 mb-2">Etapa de Avance</label>
-                    <select id="edit-etapaAvance" required class="form-input bg-white shadow-sm">
-                        <option value="Inicio">Inicio de Trabajos</option>
-                        <option value="Proceso">En Proceso (50%)</option>
-                        <option value="Finalizacion">Casi Finalizado (90%)</option>
-                        <option value="Completado">Trabajo Completado (100%)</option>
+                <!-- Actividad Realizada -->
+                <div class="mb-4">
+                    <label for="edit-actividadRealizada" class="block text-sm font-medium text-gray-700 mb-1">Actividad Realizada</label>
+                    <select id="edit-actividadRealizada" required class="form-input bg-white">
+                        <option value="Rastra">Rastra</option>
+                        <option value="Subsolado">Subsolado</option>
+                        <option value="Encalado">Encalado</option>
+                        <option value="Plantación">Plantación</option>
+                        <option value="Fertilización">Fertilización</option>
+                        <option value="Aplicación de gel">Aplicación de gel</option>
+                        <option value="Riego">Riego</option>
+                        <option value="Control de hormigas">Control de hormigas</option>
+                        <option value="Carpida">Carpida</option>
+                        <option value="Muestra de suelo">Muestra de suelo</option>
+                        <option value="Inventario forestal">Inventario forestal</option>
                     </select>
                 </div>
+                <!-- Nombre del Técnico o Puntero -->
+                <div class="mb-4">
+                    <label for="edit-tecnicoPuntero" class="block text-sm font-medium text-gray-700 mb-1">Nombre del Técnico o Puntero</label>
+                    <input type="text" id="edit-tecnicoPuntero" required class="form-input">
+                </div>
                 <!-- Coordenadas (solo lectura, para referencia) -->
-                <div class="mb-6 p-4 bg-gray-50/80 rounded-xl card">
-                    <p class="text-sm font-semibold text-gray-700">Coordenadas GPS (no editables):</p>
-                    <p id="edit-coords" class="text-sm text-gray-500 mt-2"></p>
+                <div class="mb-4 p-3 bg-gray-50 rounded-lg">
+                    <p class="text-sm font-medium text-gray-700">Coordenadas GPS (no editables):</p>
+                    <p id="edit-coords" class="text-xs text-gray-500 mt-1"></p>
                 </div>
                 <div class="flex justify-end space-x-2">
                     <button type="button" id="cancel-edit-btn" class="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400">Cancelar</button>
@@ -364,16 +287,19 @@
             </form>
         </div>
     </div>
+
     <!-- Carga de Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
         integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
         crossorigin=""></script>
+
     <!-- Carga de Firebase SDKs -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, onAuthStateChanged, setPersistence, browserSessionPersistence } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, addDoc, onSnapshot, collection, query, serverTimestamp, updateDoc, doc, deleteDoc, enableIndexedDbPersistence } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, addDoc, onSnapshot, collection, query, serverTimestamp, updateDoc, doc, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         import { setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
         // Tu configuración de Firebase
         const firebaseConfig = {
             apiKey: "AIzaSyAScFFccOaYb4JpmNNB3sl9-7hdL7eNTGk",
@@ -383,20 +309,17 @@
             messagingSenderId: "417334727561",
             appId: "1:417334727561:web:bfb3b53cf670646b7f4758"
         };
+
         let db = null;
         let auth = null;
         let map = null;
         let userId = null;
         let isAuthReady = false;
-        let currentCoords = null;
-        let allFieldData = [];
-        let sortState = { key: 'timestamp', direction: 'desc' };
+        let currentCoords = null; 
+        let allFieldData = []; 
+        let sortState = { key: 'timestamp', direction: 'desc' }; 
         let connectionError = false;
-        let isOnline = navigator.onLine;
-        let searchTimeout = null; // Para debounce en búsqueda
-        let pendingSyncCount = 0;
-        let currentPage = 1;
-        const PAGE_SIZE = 10;
+
         const form = document.getElementById('data-form');
         const submitBtn = document.getElementById('submit-btn');
         const statusMessage = document.getElementById('status-message');
@@ -407,67 +330,48 @@
         const retryGpsBtn = document.getElementById('retry-gps-btn');
         const gpsRetryContainer = document.getElementById('gps-retry-container');
         const demoModeBanner = document.getElementById('demo-mode-banner');
-        const offlineBanner = document.getElementById('offline-banner');
-        const pendingSyncCountEl = document.getElementById('pending-sync-count');
-        const tableSearch = document.getElementById('table-search');
-        const recordsCount = document.getElementById('records-count');
-        const centerMyLocationBtn = document.getElementById('center-my-location-btn');
-        const mapLoading = document.getElementById('map-loading');
+
         // Elementos del Modal y Export
         const editModal = document.getElementById('edit-modal');
         const editForm = document.getElementById('edit-form');
         const closeModal = document.querySelector('.close');
         const cancelEditBtn = document.getElementById('cancel-edit-btn');
         const exportExcelBtn = document.getElementById('export-excel-btn');
-        const COLLECTION_NAME = 'field_data_geolocalizados';
-        const stageColors = {
-            'Inicio': { bg: 'bg-red-500', text: 'text-red-700', hex: '#ef4444' },
-            'Proceso': { bg: 'bg-yellow-500', text: 'text-yellow-700', hex: '#f59e0b' },
-            'Finalizacion': { bg: 'bg-blue-500', text: 'text-blue-700', hex: '#3b82f6' },
-            'Completado': { bg: 'bg-green-500', text: 'text-green-700', hex: '#10b981' },
+
+        const COLLECTION_NAME = 'field_data_geolocalizados'; 
+
+        const activityColors = {
+            'Rastra': { bg: 'bg-red-500', text: 'text-red-700', hex: '#ef4444' },
+            'Subsolado': { bg: 'bg-orange-500', text: 'text-orange-700', hex: '#f97316' },
+            'Encalado': { bg: 'bg-yellow-500', text: 'text-yellow-700', hex: '#f59e0b' },
+            'Plantación': { bg: 'bg-green-500', text: 'text-green-700', hex: '#10b981' },
+            'Fertilización': { bg: 'bg-lime-500', text: 'text-lime-700', hex: '#84cc16' },
+            'Aplicación de gel': { bg: 'bg-blue-500', text: 'text-blue-700', hex: '#3b82f6' },
+            'Riego': { bg: 'bg-cyan-500', text: 'text-cyan-700', hex: '#06b6d4' },
+            'Control de hormigas': { bg: 'bg-indigo-500', text: 'text-indigo-700', hex: '#6366f1' },
+            'Carpida': { bg: 'bg-violet-500', text: 'text-violet-700', hex: '#8b5cf6' },
+            'Muestra de suelo': { bg: 'bg-purple-500', text: 'text-purple-700', hex: '#a855f7' },
+            'Inventario forestal': { bg: 'bg-pink-500', text: 'text-pink-700', hex: '#ec4899' },
         };
-        // --- Monitoreo de Conexión ---
-        function updateOnlineStatus() {
-            isOnline = navigator.onLine;
-            if (isOnline && !connectionError) {
-                offlineBanner.classList.add('hidden');
-                // Intentar sincronizar si hay pendientes (Firestore lo maneja automáticamente con persistence)
-                showStatus('Conexión restaurada. Sincronizando datos...', 'info');
-            } else if (!isOnline) {
-                offlineBanner.classList.remove('hidden');
-                updatePendingCount();
-                showStatus('Modo offline: Los datos se guardan localmente.', 'warning');
-            }
-        }
-        window.addEventListener('online', updateOnlineStatus);
-        window.addEventListener('offline', updateOnlineStatus);
-        function updatePendingCount() {
-            // En modo Firebase con persistence, no hay "pendientes" manuales, pero simulamos para UI
-            // En fallback, contar allFieldData si connectionError
-            if (connectionError) {
-                pendingSyncCount = allFieldData.length;
-            } else {
-                pendingSyncCount = 0; // Firestore maneja sync
-            }
-            pendingSyncCountEl.textContent = pendingSyncCount;
-        }
-        // --- Utilidades UI ---
+
+        // --- Utilidades UI (igual que antes) ---
         function showStatus(message, type = 'info') {
             statusMessage.textContent = message;
             statusMessage.classList.remove('hidden', 'bg-red-100', 'text-red-700', 'bg-green-100', 'text-green-700', 'bg-yellow-100', 'text-yellow-700', 'bg-blue-100', 'text-blue-700');
             if (type === 'error') {
-                statusMessage.classList.add('bg-red-100/80', 'text-red-700', 'backdrop-blur-sm');
+                statusMessage.classList.add('bg-red-100', 'text-red-700');
                 demoModeBanner.classList.remove('hidden');
             } else if (type === 'success') {
-                statusMessage.classList.add('bg-green-100/80', 'text-green-700', 'backdrop-blur-sm');
+                statusMessage.classList.add('bg-green-100', 'text-green-700');
                 demoModeBanner.classList.add('hidden');
             } else if (type === 'info') {
-                statusMessage.classList.add('bg-blue-100/80', 'text-blue-700', 'backdrop-blur-sm');
+                statusMessage.classList.add('bg-blue-100', 'text-blue-700');
             } else {
-                statusMessage.classList.add('bg-yellow-100/80', 'text-yellow-700', 'backdrop-blur-sm');
+                statusMessage.classList.add('bg-yellow-100', 'text-yellow-700');
             }
             statusMessage.classList.remove('hidden');
         }
+
         function toggleForm(enabled) {
             submitBtn.disabled = !enabled;
             if (enabled) {
@@ -476,42 +380,20 @@
                 submitBtn.textContent = 'Inicializando...';
             }
         }
-        // Validación en tiempo real para formulario
-        function validateForm() {
-            const fecha = document.getElementById('fecha').value;
-            const ci = document.getElementById('ci').value.trim();
-            const nombre = document.getElementById('nombre').value.trim();
-            const etapa = document.getElementById('etapaAvance').value;
-            const isValid = fecha && ci && nombre && etapa;
-            submitBtn.disabled = !isValid;
-        }
-        ['fecha', 'ci', 'nombre', 'etapaAvance'].forEach(id => {
-            document.getElementById(id).addEventListener('input', validateForm);
-            document.getElementById(id).addEventListener('change', validateForm);
-        });
-        // --- Configuración de Firebase / Modo Demo con Persistencia Offline ---
+
+        // --- Inicialización Firebase (igual) ---
         async function initializeFirebase() {
             loadingAuth.classList.remove('hidden');
-          
+            
             try {
                 const app = initializeApp(firebaseConfig);
                 db = getFirestore(app);
                 auth = getAuth(app);
-                setLogLevel('warn'); // Reducir logs a warn para producción
-                // Habilitar persistencia offline para Firestore
-                try {
-                    await enableIndexedDbPersistence(db);
-                    console.log("Persistencia offline habilitada para Firestore.");
-                } catch (persistenceErr) {
-                    if (persistenceErr.code === 'failed-precondition') {
-                        console.log("Persistencia falló: Múltiples pestañas abiertas.");
-                    } else if (persistenceErr.code === 'unimplemented') {
-                        console.log("Persistencia no disponible en este navegador.");
-                    }
-                    // Continuar sin persistencia
-                }
+                setLogLevel('Debug');
+
                 await setPersistence(auth, browserSessionPersistence);
                 await signInAnonymously(auth);
+
                 onAuthStateChanged(auth, (user) => {
                     loadingAuth.classList.add('hidden');
                     if (user) {
@@ -523,11 +405,9 @@
                         setupRealtimeListener();
                         getLocationAndUpdateUI();
                         demoModeBanner.classList.add('hidden');
-                        updateOnlineStatus();
-                        showStatus('Firebase conectado con soporte offline. ¡Listo para registrar datos!', 'success');
+                        showStatus('Firebase conectado exitosamente. ¡Listo para registrar datos!', 'success');
                     } else {
-                        // Fallback si la autenticación falla
-                        userId = crypto.randomUUID();
+                        userId = crypto.randomUUID(); 
                         userIdDisplay.textContent = userId + ' (Anónimo - Fallo Auth)';
                         showStatus('Advertencia: Fallo en la autenticación, usando ID anónimo. Revisa las reglas de seguridad.', 'error');
                         isAuthReady = true;
@@ -536,18 +416,16 @@
                         setupRealtimeListener();
                         getLocationAndUpdateUI();
                         connectionError = true;
-                        updatePendingCount();
                     }
                 });
+
             } catch (error) {
                 console.error("Error al inicializar Firebase o autenticar:", error);
-                showStatus(`Error crítico al iniciar la app: ${error.message}. Activando modo temporal con almacenamiento local.`, 'error');
-              
-                // Modo de Fallback (Simulación Demo con localStorage para persistencia)
+                showStatus(`Error crítico al iniciar la app: ${error.message}. Activando modo temporal.`, 'error');
+                
                 connectionError = true;
                 userId = 'DEMO_USER_' + Math.random().toString(36).substring(2, 8).toUpperCase();
                 userIdDisplay.textContent = userId;
-                loadLocalData(); // Cargar datos locales persistentes
                 isAuthReady = true;
                 toggleForm(true);
                 initializeMap();
@@ -555,101 +433,72 @@
                 getLocationAndUpdateUI();
                 loadingAuth.classList.add('hidden');
                 demoModeBanner.classList.remove('hidden');
-                updateOnlineStatus();
             }
         }
-        // --- Almacenamiento Local para Modo Fallback (usando localStorage para persistencia) ---
-        function saveLocalData(data) {
-            const existing = JSON.parse(localStorage.getItem('field_data_local') || '[]');
-            const record = {
-                ...data,
-                userId: userId,
-                timestamp: new Date().toISOString(),
-                localId: Date.now().toString() // ID único local
-            };
-            existing.push(record);
-            localStorage.setItem('field_data_local', JSON.stringify(existing));
-            allFieldData = existing.map(item => ({ ...item, id: item.localId }));
-            renderData();
-            updatePendingCount();
-            showStatus('Datos guardados localmente (modo temporal). Se sincronizarán cuando estés en línea.', 'warning');
-        }
-        function loadLocalData() {
-            const stored = JSON.parse(localStorage.getItem('field_data_local') || '[]');
-            allFieldData = stored.map(item => ({ ...item, id: item.localId }));
-            renderData();
-            updatePendingCount();
-        }
-        // --- Geolocalización (Promise interna) ---
+
+        // --- Geolocalización (igual) ---
         function getGeolocationPromise() {
             return new Promise((resolve, reject) => {
                 if (navigator.geolocation) {
                     navigator.geolocation.getCurrentPosition(
                         resolve,
-                        (error) => {
-                            // Mensajes más específicos por código de error
-                            let msg = '';
-                            switch (error.code) {
-                                case error.PERMISSION_DENIED:
-                                    msg = 'Permiso denegado. Ve a la barra de direcciones del navegador y permite la ubicación.';
-                                    break;
-                                case error.POSITION_UNAVAILABLE:
-                                    msg = 'Información de ubicación no disponible. Verifica tu conexión GPS.';
-                                    break;
-                                case error.TIMEOUT:
-                                    msg = 'Tiempo de espera agotado. Intenta en un área con mejor señal.';
-                                    break;
-                                default:
-                                    msg = 'Error desconocido en GPS.';
-                            }
-                            reject(new Error(msg));
-                        },
+                        reject,
                         { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
                     );
                 } else {
-                    reject(new Error('Geolocalización no soportada por este navegador.'));
+                    reject(new Error('Geolocalización no soportada.'));
                 }
             });
         }
-        // --- Geolocalización y Actualización de UI ---
+
         async function getLocationAndUpdateUI(isFormSubmission = false) {
-            currentCoords = null;
+            currentCoords = null; 
+
             gpsStatus.textContent = 'Obteniendo ubicación...';
             gpsStatus.classList.remove('text-blue-600', 'text-green-600', 'text-red-600');
             gpsStatus.classList.add('text-yellow-600');
             gpsCoordsDisplay.classList.add('hidden');
             gpsRetryContainer.classList.add('hidden');
-          
+            
             if (isFormSubmission) {
                  submitBtn.disabled = true;
             }
+
             try {
                 const position = await getGeolocationPromise();
                 currentCoords = {
                     lat: position.coords.latitude,
                     lng: position.coords.longitude
                 };
-              
-                gpsStatus.textContent = `¡Ubicación obtenida! Precisión: ${position.coords.accuracy ? position.coords.accuracy.toFixed(0) + 'm' : 'Alta'}`;
+                
+                gpsStatus.textContent = '¡Ubicación obtenida!';
                 gpsStatus.classList.remove('text-yellow-600');
                 gpsStatus.classList.add('text-green-600');
                 gpsCoordsDisplay.textContent = `Lat: ${currentCoords.lat.toFixed(6)}, Lng: ${currentCoords.lng.toFixed(6)}`;
                 gpsCoordsDisplay.classList.remove('hidden');
-                centerMyLocationBtn.classList.remove('hidden'); // Mostrar botón si hay coords
+
                 if (isFormSubmission) {
-                    return currentCoords;
+                    return currentCoords; 
                 }
+
             } catch (error) {
-                gpsStatus.textContent = `Error GPS: ${error.message}`;
+                let msg = "Error de geolocalización. Asegúrate de tener el GPS activado.";
+                if (error.code === 1) msg = "Acceso a GPS denegado por el usuario. Por favor, revisa los permisos del navegador (a la izquierda de la URL) e intenta de nuevo.";
+                if (error.code === 2) msg = "Ubicación no disponible.";
+                if (error.code === 3) msg = "Tiempo de espera agotado.";
+                if (error.message.includes('soportada')) msg = error.message;
+
+                gpsStatus.textContent = `Error GPS: ${msg}`;
                 gpsStatus.classList.remove('text-yellow-600', 'text-green-600');
                 gpsStatus.classList.add('text-red-600');
-              
+                
                 gpsRetryContainer.classList.remove('hidden');
+
                 if (isFormSubmission) {
-                    showStatus(`No se pudo obtener la ubicación para guardar: ${error.message}`, 'error');
+                    showStatus(`No se pudo obtener la ubicación para guardar: ${msg}`, 'error');
                 }
-              
-                return null;
+                
+                return null; 
             } finally {
                 if (isFormSubmission) {
                     submitBtn.disabled = false;
@@ -657,104 +506,83 @@
                 }
             }
         }
-        // --- Guardar Datos (Firestore con Offline o Local) ---
+
+        // --- Guardar Nuevo (actualizado con nuevos campos) ---
         async function saveData(data) {
             if (!isAuthReady) {
                 showStatus('La aplicación aún no está lista. Inténtalo de nuevo.', 'error');
                 return;
             }
+
             submitBtn.disabled = true;
             submitBtn.textContent = 'Guardando...';
+
             try {
                 const record = {
                     ...data,
                     userId: userId,
-                    timestamp: connectionError ? new Date().toISOString() : serverTimestamp()
+                    timestamp: connectionError ? new Date() : serverTimestamp()
                 };
+
                 if (connectionError) {
-                    // Modo Local Persistente
-                    saveLocalData(record);
-                    form.reset();
+                    record.id = allFieldData.length.toString();
+                    allFieldData.push(record);
+                    renderData();
+                    showStatus('Datos guardados en MODO TEMPORAL. No serán persistentes.', 'error');
                 } else {
-                    // Modo Firebase (con offline persistence automático)
                     const collectionRef = collection(db, COLLECTION_NAME);
                     await addDoc(collectionRef, record);
-                    showStatus(`Datos guardados exitosamente${!isOnline ? ' (se sincronizarán cuando estés en línea)' : ''}.`, 'success');
-                    form.reset();
+                    showStatus(`Datos guardados exitosamente en Firestore. Colección: ${COLLECTION_NAME}`, 'success');
                 }
-              
-                // Limpiar coordenadas y estado después de un guardado exitoso
+                
+                form.reset();
                 currentCoords = null;
                 gpsStatus.textContent = 'Haz clic en Guardar para obtener la ubicación.';
                 gpsStatus.classList.remove('text-green-600', 'text-red-600', 'text-yellow-600');
                 gpsStatus.classList.add('text-blue-600');
                 gpsCoordsDisplay.classList.add('hidden');
                 gpsRetryContainer.classList.add('hidden');
-                centerMyLocationBtn.classList.add('hidden');
-                updatePendingCount();
+
             } catch (error) {
                 console.error("Error al guardar:", error);
-                // Fallback a local si Firebase falla durante save
-                if (!connectionError) {
-                    showStatus(`Error en Firebase, guardando localmente: ${error.message}`, 'warning');
-                    saveLocalData(record);
-                    connectionError = true;
-                } else {
-                    showStatus(`Error al guardar localmente: ${error.message}`, 'error');
-                }
+                showStatus(`Error al guardar: ${error.message}`, 'error');
             } finally {
                 submitBtn.disabled = false;
                 submitBtn.textContent = 'Guardar Datos y Ubicación';
-                validateForm(); // Revalidar después de reset
             }
         }
-        // --- Editar Registro ---
+
+        // --- Editar Registro (actualizado con nuevos campos) ---
         async function editData(docId, data) {
             if (connectionError) {
-                // Editar local
-                const index = allFieldData.findIndex(item => item.id === docId);
-                if (index > -1) {
-                    allFieldData[index] = { ...allFieldData[index], ...data, timestamp: new Date().toISOString() };
-                    localStorage.setItem('field_data_local', JSON.stringify(allFieldData.map(item => ({ ...item, id: item.localId }))));
-                    renderData();
-                    showStatus('Registro editado localmente.', 'success');
-                    editModal.style.display = 'none';
-                    updatePendingCount();
-                    return;
-                }
-                showStatus('Registro no encontrado para editar.', 'error');
+                showStatus('Edición no disponible en modo temporal.', 'error');
                 return;
             }
+
             try {
                 const docRef = doc(db, COLLECTION_NAME, docId);
                 await updateDoc(docRef, data);
                 showStatus('Registro actualizado exitosamente.', 'success');
-                editModal.style.display = 'none'; // Cerrar modal
+                editModal.style.display = 'none';  // Cerrar modal
             } catch (error) {
                 console.error("Error al editar:", error);
                 showStatus(`Error al editar: ${error.message}`, 'error');
             }
         }
-        // --- Eliminar Registro ---
+
+        // --- Eliminar Registro (igual) ---
         async function deleteData(docId) {
             if (connectionError) {
-                // Eliminar local
+                // Modo demo: Remover de array local
                 const index = allFieldData.findIndex(item => item.id === docId);
                 if (index > -1) {
                     allFieldData.splice(index, 1);
-                    localStorage.setItem('field_data_local', JSON.stringify(allFieldData.map(item => ({ ...item, id: item.localId }))));
-                    // Ajustar página si es necesario
-                    if (allFieldData.length === 0) {
-                        currentPage = 1;
-                    } else if ((currentPage - 1) * PAGE_SIZE >= allFieldData.length) {
-                        currentPage = Math.ceil(allFieldData.length / PAGE_SIZE);
-                    }
                     renderData();
-                    showStatus('Registro eliminado localmente.', 'success');
-                    updatePendingCount();
+                    showStatus('Registro eliminado en MODO TEMPORAL.', 'success');
                 }
                 return;
             }
+
             try {
                 const docRef = doc(db, COLLECTION_NAME, docId);
                 await deleteDoc(docRef);
@@ -764,14 +592,16 @@
                 showStatus(`Error al eliminar: ${error.message}`, 'error');
             }
         }
-        // --- Exportar a Excel ---
-        function exportToExcel(dataToExport = allFieldData) {
-            if (dataToExport.length === 0) {
+
+        // --- Exportar a Excel (actualizado con nuevos campos) ---
+        function exportToExcel() {
+            if (allFieldData.length === 0) {
                 showStatus('No hay datos para exportar.', 'info');
                 return;
             }
+
             // Preparar datos para Excel
-            const exportData = dataToExport.map(item => {
+            const exportData = allFieldData.map(item => {
                 let timestampText = 'N/A';
                 if (item.timestamp) {
                     const dateObj = item.timestamp instanceof Date ? item.timestamp : (item.timestamp.toDate ? item.timestamp.toDate() : new Date(item.timestamp));
@@ -779,110 +609,99 @@
                 }
                 return {
                     'Fecha': item.fecha,
-                    'Nombre': item.nombreCompleto,
-                    'C.I.': item.ci,
-                    'Etapa': item.etapaAvance,
+                    'Nº cédula Beneficiario/a': item.cedula,
+                    'Nombre Beneficiario/a': item.nombreBeneficiario,
+                    'Actividad Realizada': item.actividadRealizada,
+                    'Nombre del Técnico o Puntero': item.tecnicoPuntero,
                     'Lat': item.lat,
                     'Lng': item.lng,
                     'Timestamp': timestampText,
                     'User ID': item.userId
                 };
             });
+
             const ws = XLSX.utils.json_to_sheet(exportData);
             const wb = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(wb, ws, "Registros de Campo");
             XLSX.writeFile(wb, "registros_campo.xlsx");
             showStatus('Archivo Excel descargado exitosamente.', 'success');
         }
-        // --- Manejador de Formulario ---
+
+        // --- Manejador Formulario Nuevo (actualizado con nuevos campos) ---
         form.addEventListener('submit', async (e) => {
             e.preventDefault();
-          
+            
             showStatus('Validando datos y procesando ubicación...', 'info');
+
             let coordsToSave = currentCoords;
+
             if (!coordsToSave) {
                 coordsToSave = await getLocationAndUpdateUI(true);
             }
-          
+            
             if (!coordsToSave) {
                 return;
             }
+
             const data = {
                 fecha: document.getElementById('fecha').value,
-                ci: document.getElementById('ci').value,
-                nombreCompleto: document.getElementById('nombre').value,
-                etapaAvance: document.getElementById('etapaAvance').value,
+                cedula: document.getElementById('cedula').value,
+                nombreBeneficiario: document.getElementById('nombreBeneficiario').value,
+                actividadRealizada: document.getElementById('actividadRealizada').value,
+                tecnicoPuntero: document.getElementById('tecnicoPuntero').value,
             };
+
             const fullData = { ...data, lat: coordsToSave.lat, lng: coordsToSave.lng };
             await saveData(fullData);
         });
-      
-        // --- Manejador del botón de Reintento GPS ---
+        
         retryGpsBtn.addEventListener('click', () => {
              getLocationAndUpdateUI();
         });
-        // --- Manejadores Modal ---
+
+        // --- Manejadores Modal (igual) ---
         closeModal.addEventListener('click', () => {
             editModal.style.display = 'none';
         });
+
         cancelEditBtn.addEventListener('click', () => {
             editModal.style.display = 'none';
         });
+
         window.addEventListener('click', (e) => {
             if (e.target === editModal) {
                 editModal.style.display = 'none';
             }
         });
+
         editForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const docId = document.getElementById('edit-doc-id').value;
             const updatedData = {
                 fecha: document.getElementById('edit-fecha').value,
-                ci: document.getElementById('edit-ci').value,
-                nombreCompleto: document.getElementById('edit-nombre').value,
-                etapaAvance: document.getElementById('edit-etapaAvance').value,
+                cedula: document.getElementById('edit-cedula').value,
+                nombreBeneficiario: document.getElementById('edit-nombreBeneficiario').value,
+                actividadRealizada: document.getElementById('edit-actividadRealizada').value,
+                tecnicoPuntero: document.getElementById('edit-tecnicoPuntero').value,
             };
             await editData(docId, updatedData);
         });
+
         // Manejador Export Excel
-        exportExcelBtn.addEventListener('click', () => exportToExcel(allFieldData));
-        // Búsqueda en tabla con debounce
-        tableSearch.addEventListener('input', (e) => {
-            clearTimeout(searchTimeout);
-            searchTimeout = setTimeout(() => {
-                currentPage = 1;
-                renderData();
-            }, 300);
-        });
-        // Botón centrar en mi ubicación
-        centerMyLocationBtn.addEventListener('click', () => {
-            if (currentCoords && map) {
-                map.setView([currentCoords.lat, currentCoords.lng], 16);
-                showStatus('Mapa centrado en tu ubicación actual.', 'info');
-            } else {
-                showStatus('No hay ubicación disponible. Obtén una nueva GPS.', 'warning');
-            }
-        });
-        // Función para obtener datos filtrados
-        function getFilteredData() {
-            const searchTerm = tableSearch.value.toLowerCase().trim();
-            if (!searchTerm) return allFieldData;
-            return allFieldData.filter(item =>
-                item.nombreCompleto.toLowerCase().includes(searchTerm) ||
-                item.ci.toLowerCase().includes(searchTerm) ||
-                item.etapaAvance.toLowerCase().includes(searchTerm)
-            );
-        }
-        // Función para abrir modal con datos
+        exportExcelBtn.addEventListener('click', exportToExcel);
+
+        // Función para abrir modal con datos (actualizado con nuevos campos)
         function openEditModal(item) {
             document.getElementById('edit-doc-id').value = item.id;
             document.getElementById('edit-fecha').value = item.fecha;
-            document.getElementById('edit-ci').value = item.ci;
-            document.getElementById('edit-nombre').value = item.nombreCompleto;
-            document.getElementById('edit-etapaAvance').value = item.etapaAvance;
+            document.getElementById('edit-cedula').value = item.cedula;
+            document.getElementById('edit-nombreBeneficiario').value = item.nombreBeneficiario;
+            document.getElementById('edit-actividadRealizada').value = item.actividadRealizada;
+            document.getElementById('edit-tecnicoPuntero').value = item.tecnicoPuntero;
             document.getElementById('edit-coords').textContent = `${item.lat.toFixed(4)}, ${item.lng.toFixed(4)}`;
             editModal.style.display = 'block';
         }
+
         // Función global para botón editar (desde onclick en tabla)
         window.openEditModalFromRow = function(button) {
             const row = button.closest('tr');
@@ -890,6 +709,7 @@
             const item = JSON.parse(itemStr.replace(/&#39;/g, "'"));
             openEditModal(item);
         };
+
         // Función global para botón eliminar (desde onclick en tabla)
         window.deleteFromRow = function(button) {
             const row = button.closest('tr');
@@ -898,50 +718,47 @@
                 deleteData(docId);
             }
         };
-        // --- Configuración de Leaflet Map (Mejorado con loading) ---
-        const markerGroup = L.layerGroup(); // Movido aquí para evitar error de referencia
+
+        // --- Mapa (igual) ---
         function initializeMap() {
-            console.log('Inicializando mapa...');
             const initialCoords = [-23.4425, -58.4438];
             const initialZoom = 6;
-            // Capa base de Calles (OpenStreetMap) - Definida primero
-            const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+
+            map = L.map('map').setView(initialCoords, initialZoom);
+
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-            });
-            // Capa base de Satélite (Esri WorldImagery)
-            const satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-                attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
-            });
-            // Crear el mapa con la capa base inicial (OSM)
-            map = L.map('map', { layers: [osmLayer] }).setView(initialCoords, initialZoom);
-            // Control de capas base (aparece en esquina superior derecha)
-            L.control.layers({ "Calles": osmLayer, "Satélite": satelliteLayer }).addTo(map);
+            }).addTo(map);
+
             L.control.scale().addTo(map);
+
             markerGroup.addTo(map);
-            mapLoading.style.display = 'none'; // Ocultar spinner
-            console.log('Mapa inicializado correctamente.');
         }
-        // --- Lógica de Ordenamiento de la Tabla ---
+
+        const markerGroup = L.layerGroup();
+
+        // --- Ordenamiento (igual) ---
         function sortData(data, key, direction) {
             return data.sort((a, b) => {
                 let valA = a[key];
                 let valB = b[key];
-                // Manejo especial para Firestore Timestamp o Date en modo Fallback
+
                 if (key === 'timestamp') {
-                    // Convertir a milisegundos para comparación
                     valA = valA instanceof Date ? valA.getTime() : (valA && typeof valA.toMillis === 'function' ? valA.toMillis() : (valA || 0));
                     valB = valB instanceof Date ? valB.getTime() : (valB && typeof valB.toMillis === 'function' ? valB.toMillis() : (valB || 0));
                 }
-              
+                
                 if (typeof valA === 'string' && typeof valB === 'string') {
                     valA = valA.toLowerCase();
                     valB = valB.toLowerCase();
                 }
+
                 if (valA < valB) return direction === 'asc' ? -1 : 1;
                 if (valA > valB) return direction === 'asc' ? 1 : -1;
                 return 0;
             });
         }
+
         function handleSort(key) {
             if (sortState.key === key) {
                 sortState.direction = sortState.direction === 'asc' ? 'desc' : 'asc';
@@ -949,180 +766,142 @@
                 sortState.key = key;
                 sortState.direction = 'desc';
             }
-            currentPage = 1;
-            renderData(); // Llama a la función principal de renderizado
+            renderData();
         }
-        // --- Renderizado y Lógica de la Tabla y Mapa ---
+
+        // --- Renderizado Tabla y Mapa (actualizado con nuevos campos y colores) ---
         function renderMapAndTable(data) {
             if (!map) return;
-          
+            
             markerGroup.clearLayers();
-            let bounds = [];
+            let bounds = []; 
+
             data.forEach(item => {
                 const coords = [item.lat, item.lng];
                 bounds.push(coords);
-              
-                const stage = item.etapaAvance;
-                const colorConfig = stageColors[stage] || { bg: 'bg-gray-500', text: 'text-gray-700', hex: '#6b7280' };
+                
+                const activity = item.actividadRealizada;
+                const colorConfig = activityColors[activity] || { bg: 'bg-gray-500', text: 'text-gray-700', hex: '#6b7280' };
+
                 const formattedDate = new Date(item.fecha + 'T00:00:00').toLocaleDateString('es-ES', {
                     year: 'numeric',
                     month: 'long',
                     day: 'numeric'
                 });
-              
+                
                 const customIcon = L.divIcon({
                     className: 'custom-marker',
-                    html: `<div class="${colorConfig.bg} w-5 h-5 rounded-full border-3 border-white shadow-lg transform rotate-45" style="box-shadow: 0 4px 8px rgba(0,0,0,0.2);"></div>`,
-                    iconSize: [25, 25],
-                    iconAnchor: [12.5, 12.5]
+                    html: `<div class="${colorConfig.bg} w-4 h-4 rounded-full border-2 border-white shadow-lg transform rotate-45"></div>`,
+                    iconSize: [20, 20],
+                    iconAnchor: [10, 10]
                 });
+
                 const popupContent = `
-                    <div style="font-family: 'Inter', sans-serif; min-width: 200px;">
+                    <div style="font-family: 'Inter', sans-serif;">
                         <strong style="color:#1f2937;">Fecha:</strong> ${formattedDate}<br>
-                        <strong style="color:#1f2937;">CI:</strong> ${item.ci}<br>
-                        <strong style="color:#1f2937;">Nombre:</strong> ${item.nombreCompleto}<br>
-                        <strong style="color:#1f2937;">Etapa:</strong> <span style="font-weight:bold; color:${colorConfig.hex};">${item.etapaAvance}</span><br>
-                        <hr style="margin:8px 0; border-color: #e5e7eb;">
-                        <em style="font-size:11px; color:#6b7280;">Registrado por: ${item.userId === userId ? 'Tú' : item.userId.substring(0, 8) + '...'}</em>
+                        <strong style="color:#1f2937;">Nº cédula:</strong> ${item.cedula}<br>
+                        <strong style="color:#1f2937;">Nombre Beneficiario/a:</strong> ${item.nombreBeneficiario}<br>
+                        <strong style="color:#1f2937;">Actividad:</strong> <span style="font-weight:bold; color:${colorConfig.hex};">${item.actividadRealizada}</span><br>
+                        <strong style="color:#1f2937;">Técnico/Puntero:</strong> ${item.tecnicoPuntero}<br>
+                        <hr style="margin:4px 0;">
+                        <em style="font-size:10px; color:#6b7280;">Registrado por: ${item.userId === userId ? 'Tú' : item.userId.substring(0, 8) + '...'}</em>
                     </div>
                 `;
+
                 const marker = L.marker(coords, { icon: customIcon }).bindPopup(popupContent);
                 markerGroup.addLayer(marker);
             });
-            // Si hay datos, ajustar el mapa para que muestre todos los puntos
+
             if (bounds.length > 0) {
                 map.fitBounds(bounds, { padding: [50, 50] });
             }
-        }
-      
-        // Función para generar controles de paginación
-        function generatePaginationHTML(totalPages) {
-            if (totalPages <= 1) return '';
-            let paginationHTML = `
-                <div class="pagination">
-                    <button id="prev-page" ${currentPage === 1 ? 'disabled' : ''}>Anterior</button>
-            `;
-            // Mostrar páginas: siempre la primera, la última, y algunas alrededor de la actual
-            const maxVisible = 5;
-            let startPage = Math.max(1, currentPage - Math.floor(maxVisible / 2));
-            let endPage = Math.min(totalPages, startPage + maxVisible - 1);
-            if (endPage - startPage + 1 < maxVisible) {
-                startPage = Math.max(1, endPage - maxVisible + 1);
-            }
-            if (startPage > 1) {
-                paginationHTML += `<button class="page-btn" data-page="1">1</button>`;
-                if (startPage > 2) paginationHTML += `<span class="px-2 text-gray-400">...</span>`;
-            }
-            for (let i = startPage; i <= endPage; i++) {
-                paginationHTML += `<button class="page-btn ${i === currentPage ? 'active' : ''}" data-page="${i}">${i}</button>`;
-            }
-            if (endPage < totalPages) {
-                if (endPage < totalPages - 1) paginationHTML += `<span class="px-2 text-gray-400">...</span>`;
-                paginationHTML += `<button class="page-btn" data-page="${totalPages}">${totalPages}</button>`;
-            }
-            paginationHTML += `
-                    <button id="next-page" ${currentPage === totalPages ? 'disabled' : ''}>Siguiente</button>
-                </div>
-            `;
-            return paginationHTML;
-        }
-        // Función unificada para renderizar UI (mejorada con filtro y animación)
-        function renderData() {
-            const filteredData = getFilteredData();
-            renderMapAndTable(filteredData);
+            
+            // Render Tabla
             const container = document.getElementById('data-table-container');
-            const totalFiltered = filteredData.length;
-            const totalAll = allFieldData.length;
-            const totalPages = Math.ceil(totalFiltered / PAGE_SIZE);
-            currentPage = Math.min(currentPage, totalPages || 1);
-            recordsCount.textContent = `Mostrando ${Math.min((currentPage - 1) * PAGE_SIZE + 1, totalFiltered)}-${Math.min(currentPage * PAGE_SIZE, totalFiltered)} de ${totalFiltered} registros (total: ${totalAll}) - Página ${currentPage} de ${totalPages}`;
-            if (totalFiltered === 0) {
-                container.innerHTML = '<p class="text-gray-500 italic text-center py-8">No hay datos que coincidan con la búsqueda o aún no hay registros.</p>';
+            if (data.length === 0) {
+                container.innerHTML = '<p class="text-gray-500 italic">No hay datos de campo registrados todavía.</p>';
                 return;
             }
-            // 1. Ordenar los datos filtrados
-            const sortedData = sortData([...filteredData], sortState.key, sortState.direction);
-            // 2. Paginación
-            const start = (currentPage - 1) * PAGE_SIZE;
-            const end = start + PAGE_SIZE;
-            const pageData = sortedData.slice(start, end);
-            // 3. Crear el encabezado de la tabla
+
+            const sortedData = sortData([...data], sortState.key, sortState.direction);
+
             const headers = [
                 { id: 'fecha', name: 'Fecha' },
-                { id: 'nombreCompleto', name: 'Nombre' },
-                { id: 'ci', name: 'C.I.' },
-                { id: 'etapaAvance', name: 'Etapa' },
+                { id: 'cedula', name: 'Nº cédula Beneficiario/a' },
+                { id: 'nombreBeneficiario', name: 'Nombre Beneficiario/a' },
+                { id: 'actividadRealizada', name: 'Actividad Realizada' },
+                { id: 'tecnicoPuntero', name: 'Nombre del Técnico o Puntero' },
                 { id: 'lat', name: 'Lat/Lng' },
                 { id: 'timestamp', name: 'Registro' },
-                { id: 'actions', name: 'Acciones' } // Nueva columna
+                { id: 'actions', name: 'Acciones' }
             ];
+
             let tableHTML = `
-                <div class="table-fade-in">
-                    <div class="overflow-x-auto rounded-xl">
-                        <table class="min-w-full divide-y divide-gray-200">
-                            <thead>
-                                <tr>
-                                    ${headers.map(header => {
-                                        let sortIcon = '';
-                                        if (sortState.key === header.id && header.id !== 'actions') { // No sortable en acciones
-                                            sortIcon = sortState.direction === 'asc'
-                                                ? '<span class="ml-1 text-xs">▲</span>'
-                                                : '<span class="ml-1 text-xs">▼</span>';
-                                        }
-                                      
-                                        return `
-                                            <th scope="col" data-key="${header.id}"
-                                                class="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider ${header.id === 'actions' ? '' : 'cursor-pointer hover:bg-gray-100 transition duration-200'}">
-                                                ${header.name} ${sortIcon}
-                                            </th>
-                                        `;
-                                    }).join('')}
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            ${headers.map(header => {
+                                let sortIcon = '';
+                                if (sortState.key === header.id && header.id !== 'actions') {
+                                    sortIcon = sortState.direction === 'asc' 
+                                        ? '<span class="ml-1 text-xs">▲</span>' 
+                                        : '<span class="ml-1 text-xs">▼</span>';
+                                }
+                                
+                                return `
+                                    <th scope="col" data-key="${header.id}" 
+                                        class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider ${header.id === 'actions' ? '' : 'cursor-pointer hover:bg-gray-200 transition duration-150'}">
+                                        ${header.name} ${sortIcon}
+                                    </th>
+                                `;
+                            }).join('')}
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        ${sortedData.map(item => {
+                            const activity = item.actividadRealizada;
+                            const colorConfig = activityColors[activity];
+                            const colorClass = colorConfig?.text || 'text-gray-700';
+
+                            let timestampText = 'N/A';
+                            let dateObj = null;
+                            if (connectionError && item.timestamp instanceof Date) {
+                                dateObj = item.timestamp;
+                            } else if (item.timestamp && typeof item.timestamp.toDate === 'function') {
+                                dateObj = item.timestamp.toDate();
+                            }
+
+                            if (dateObj) {
+                                timestampText = dateObj.toLocaleTimeString('es-ES', { 
+                                    hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' 
+                                });
+                            }
+
+                            const latLngText = `${item.lat.toFixed(4)}, ${item.lng.toFixed(4)}`;
+
+                            return `
+                                <tr class="hover:bg-blue-50/50 transition duration-150" data-lat="${item.lat}" data-lng="${item.lng}" data-item='${JSON.stringify(item).replace(/'/g, "&#39;")}' data-doc-id="${item.id}">
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${item.fecha}</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${item.cedula}</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${item.nombreBeneficiario}</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm font-semibold ${colorClass}">${item.actividadRealizada}</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${item.tecnicoPuntero}</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${latLngText}</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${timestampText}</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                        <button onclick="openEditModalFromRow(this)" class="text-blue-600 hover:text-blue-900 text-xs font-medium mr-2">Editar</button>
+                                        <button onclick="deleteFromRow(this)" class="text-red-600 hover:text-red-900 text-xs font-medium">Eliminar</button>
+                                    </td>
                                 </tr>
-                            </thead>
-                            <tbody class="divide-y divide-gray-100">
-                                ${pageData.map(item => {
-                                    const stage = item.etapaAvance;
-                                    const colorConfig = stageColors[stage];
-                                    const colorClass = colorConfig?.text || 'text-gray-700';
-                                    // Formatear Timestamp (mejorado)
-                                    let timestampText = 'N/A';
-                                    let dateObj = null;
-                                    if (connectionError && typeof item.timestamp === 'string') {
-                                        dateObj = new Date(item.timestamp);
-                                    } else if (item.timestamp && typeof item.timestamp.toDate === 'function') {
-                                        dateObj = item.timestamp.toDate();
-                                    } else if (item.timestamp instanceof Date) {
-                                        dateObj = item.timestamp;
-                                    }
-                                    if (dateObj) {
-                                        timestampText = dateObj.toLocaleString('es-ES', {
-                                            hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric'
-                                        });
-                                    }
-                                    const latLngText = `${item.lat.toFixed(4)}, ${item.lng.toFixed(4)}`;
-                                    return `
-                                        <tr class="hover:bg-blue-50/50 transition-all duration-200" data-lat="${item.lat}" data-lng="${item.lng}" data-item='${JSON.stringify(item).replace(/'/g, "&#39;")}' data-doc-id="${item.id}">
-                                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${item.fecha}</td>
-                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${item.nombreCompleto}</td>
-                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${item.ci}</td>
-                                            <td class="px-6 py-4 whitespace-nowrap text-sm font-bold ${colorClass}">${item.etapaAvance}</td>
-                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${latLngText}</td>
-                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${timestampText}</td>
-                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                                <button onclick="openEditModalFromRow(this)" class="text-blue-600 hover:text-blue-900 text-xs font-medium mr-2">Editar</button>
-                                                <button onclick="deleteFromRow(this)" class="text-red-600 hover:text-red-900 text-xs font-medium">Eliminar</button>
-                                            </td>
-                                        </tr>
-                                    `;
-                                }).join('')}
-                            </tbody>
-                        </table>
-                    </div>
-                    ${generatePaginationHTML(totalPages)}
-                </div>
+                            `;
+                        }).join('')}
+                    </tbody>
+                </table>
             `;
+
             container.innerHTML = tableHTML;
-            // 4. Adjuntar manejadores de eventos de ordenación
+
+            // Eventos para sort y click fila (igual)
             container.querySelectorAll('th[data-key]').forEach(th => {
                 if (th.getAttribute('data-key') !== 'actions') {
                     th.addEventListener('click', () => {
@@ -1131,85 +910,66 @@
                     });
                 }
             });
-            // 5. Adjuntar manejadores de paginación
-            const prevBtn = container.querySelector('#prev-page');
-            if (prevBtn) {
-                prevBtn.addEventListener('click', () => {
-                    if (currentPage > 1) {
-                        currentPage--;
-                        renderData();
-                    }
-                });
-            }
-            const nextBtn = container.querySelector('#next-page');
-            if (nextBtn) {
-                nextBtn.addEventListener('click', () => {
-                    if (currentPage < totalPages) {
-                        currentPage++;
-                        renderData();
-                    }
-                });
-            }
-            container.querySelectorAll('.page-btn').forEach(btn => {
-                btn.addEventListener('click', () => {
-                    const page = parseInt(btn.getAttribute('data-page'));
-                    currentPage = page;
-                    renderData();
-                });
-            });
-             // 6. Agregar funcionalidad para centrar mapa al hacer clic en fila
+
+            // Click en fila para centrar mapa
             container.querySelectorAll('tbody tr').forEach(row => {
                 row.addEventListener('click', (e) => {
-                    if (e.target.tagName !== 'BUTTON') { // No centrar si clic en botón
+                    if (e.target.tagName !== 'BUTTON') {  // No centrar si clic en botón
                         const lat = parseFloat(row.getAttribute('data-lat'));
                         const lng = parseFloat(row.getAttribute('data-lng'));
                         if (map && !isNaN(lat) && !isNaN(lng)) {
-                            map.setView([lat, lng], 14);
+                            map.setView([lat, lng], 14); 
                         }
                     }
                 });
             });
-            showStatus(`Mostrando página ${currentPage} de ${totalPages} (${totalFiltered} registros filtrados).`, 'info');
         }
-        // --- Escucha en Tiempo Real (Firestore o Demo) ---
+        
+        function renderData() {
+            renderMapAndTable(allFieldData);
+            showStatus(`Total de ${allFieldData.length} registros cargados.`, 'info');
+        }
+
+        // --- Listener Realtime (igual) ---
         function setupRealtimeListener() {
             if (connectionError) {
-                // En modo de fallback, usar datos locales
                 renderData();
                 return;
             }
+
             if (!db || !isAuthReady) return;
-            // Colección simple en la raíz
+
             const collectionRef = collection(db, COLLECTION_NAME);
-            const q = query(collectionRef);
+            const q = query(collectionRef); 
+
             onSnapshot(q, (snapshot) => {
-                allFieldData = []; // Reiniciar data array
-                snapshot.forEach(doc => {
-                    const data = doc.data();
+                allFieldData = [];
+
+                snapshot.forEach(docSnap => {
+                    const data = docSnap.data();
                     if (data.lat && data.lng) {
-                        const fullData = { ...data, id: doc.id, lat: data.lat, lng: data.lng };
+                        const fullData = { ...data, id: docSnap.id, lat: data.lat, lng: data.lng };
                         allFieldData.push(fullData);
                     }
                 });
                 renderData();
-                showStatus(`Total de ${snapshot.size} registros cargados en el mapa y la tabla desde la colección: ${COLLECTION_NAME}${!isOnline ? ' (cache local)' : ''}`, 'success');
-                updatePendingCount();
+                showStatus(`Total de ${snapshot.size} registros cargados en el mapa y la tabla desde la colección: ${COLLECTION_NAME}`, 'success');
+
             }, (error) => {
                 console.error("Error en la escucha de Firestore:", error);
-                showStatus('Error al cargar datos del mapa en tiempo real. Usando cache local.', 'warning');
-                // No set connectionError aquí, ya que persistence maneja offline
+                showStatus('Error al cargar datos del mapa en tiempo real.', 'error');
+                connectionError = true;
                 renderData();
             });
         }
-        // --- Inicialización Principal ---
+
+        // --- Inicialización ---
         document.addEventListener('DOMContentLoaded', () => {
-            // Establecer la fecha actual por defecto en el campo de fecha
             const today = new Date().toISOString().split('T')[0];
             document.getElementById('fecha').value = today;
-            validateForm(); // Validar inicial
             initializeFirebase();
-            updateOnlineStatus();
         });
+
     </script>
 </body>
 </html>
