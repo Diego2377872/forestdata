@@ -15,114 +15,59 @@
     <!-- Carga de SheetJS para Export a Excel -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
-        /* Estilos personalizados y configuración de tipografía */
         body { font-family: 'Inter', sans-serif; background-color: #f7f9fb; }
         .form-input {
             @apply w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 ease-in-out;
         }
         #map {
-            height: 50vh; /* Altura del mapa responsiva */
-            min-height: 300px;
-            width: 100%;
-            border-radius: 0.75rem; /* rounded-xl */
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); /* shadow-lg */
+            height: 50vh; min-height: 300px; width: 100%; border-radius: 0.75rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
         }
-        /* Estilo para el icono div custom de Leaflet */
-        .custom-marker {
-            /* Necesario para que L.divIcon funcione correctamente con un div puro */
-            background: none !important;
-            border: none !important;
-        }
-        /* Estilo para filas de tabla clickeables */
-        #data-table-container tbody tr {
-            cursor: pointer;
-        }
-        /* Estilos para el modal (Actualizado: z-index más alto para superponerse al mapa) */
+        .custom-marker { background: none !important; border: none !important; }
+        #data-table-container tbody tr { cursor: pointer; }
         .modal {
-            display: none;
-            position: fixed;
-            z-index: 1050;  /* Alto para estar por encima del mapa de Leaflet (que usa ~1000) */
-            left: 0;
-            top: 0;
-            width: 100%;
-            height: 100%;
-            overflow: auto;
-            background-color: rgba(0,0,0,0.5);  /* Backdrop más oscuro para mejor visibilidad */
+            display: none; position: fixed; z-index: 1050; left: 0; top: 0; width: 100%; height: 100%;
+            overflow: auto; background-color: rgba(0,0,0,0.5);
         }
         .modal-content {
-            background-color: #fefefe;
-            margin: 5% auto;  /* Centrado vertical mejorado */
-            padding: 20px;
-            border: 1px solid #888;
-            width: 90%;
-            max-width: 500px;
-            border-radius: 0.5rem;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 0 0 1px rgba(0, 0, 0, 0.05);  /* Sombra más sutil */
-            animation: modalSlideIn 0.3s ease-out;  /* Animación suave de entrada */
+            background-color: #fefefe; margin: 5% auto; padding: 20px; border: 1px solid #888;
+            width: 90%; max-width: 500px; border-radius: 0.5rem;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 0 0 1px rgba(0,0,0,0.05);
+            animation: modalSlideIn 0.3s ease-out;
         }
-        @keyframes modalSlideIn {
-            from { opacity: 0; transform: translateY(-20px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        .close {
-            color: #aaa;
-            float: right;
-            font-size: 28px;
-            font-weight: bold;
-            cursor: pointer;
-        }
-        .close:hover,
-        .close:focus {
-            color: black;
-            text-decoration: none;
-        }
-        /* Footer copyright */
+        @keyframes modalSlideIn { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
+        .close { color: #aaa; float: right; font-size: 28px; font-weight: bold; cursor: pointer; }
+        .close:hover, .close:focus { color: black; text-decoration: none; }
         footer {
-            background-color: #f3f4f6;
-            border-top: 1px solid #e5e7eb;
-            padding: 1rem;
-            text-align: center;
-            font-size: 0.875rem;
-            color: #6b7280;
+            background-color: #f3f4f6; border-top: 1px solid #e5e7eb; padding: 1rem;
+            text-align: center; font-size: 0.875rem; color: #6b7280;
         }
-        /* Animación suave para el icono forestal */
-        @keyframes sway {
-            0%, 100% { transform: rotate(-2deg); }
-            50% { transform: rotate(2deg); }
-        }
-        .header-icon {
-            animation: sway 3s ease-in-out infinite;
-            display: inline-block;
-        }
+        @keyframes sway { 0%, 100% { transform: rotate(-2deg); } 50% { transform: rotate(2deg); } }
+        .header-icon { animation: sway 3s ease-in-out infinite; display: inline-block; }
     </style>
 </head>
 <body class="min-h-screen">
-    <!-- Copyright en Footer (Parte Inferior) -->
     <footer class="fixed bottom-0 left-0 right-0">
-        <p>Elaborado por Diego Rodriguez © 2025 roddieg@gmail.com</p>
+        <p>Elaborado por Diego Rodriguez © 2025 email:roddieg@gmail.com</p>
     </footer>
 
-    <div class="container mx-auto p-4 md:p-8 pb-20">  <!-- Padding bottom para footer fijo -->
+    <div class="container mx-auto p-4 md:p-8 pb-20">
         <header class="text-center mb-8">
             <h1 class="text-3xl font-extrabold text-gray-900 md:text-4xl flex items-center justify-center gap-3">
-                <span class="header-icon">🌲</span> Carga de Datos de Campo
+                <span class="header-icon">Carga de Datos de Campo</span>
             </h1>
-            <p class="text-gray-600 mt-2">
-                Registro georreferenciado de actividades.
-            </p>
+            <p class="text-gray-600 mt-2">Registro georreferenciado de actividades.</p>
         </header>
 
-        <!-- Banner de Modo Demo -->
         <div id="demo-mode-banner" class="hidden mb-6 p-4 rounded-xl bg-red-100 border-2 border-red-500 shadow-md">
-            <h3 class="font-bold text-red-800">⚠️ FALLO DE CONEXIÓN</h3>
+            <h3 class="font-bold text-red-800">FALLO DE CONEXIÓN</h3>
             <p class="text-sm text-red-700 mt-1">
-                No se pudo conectar a Firebase. La aplicación funciona con **datos temporales** que no se guardarán. Por favor, revisa la configuración.
+                No se pudo conectar a Firebase. La aplicación funciona con **datos temporales** que no se guardarán.
             </p>
         </div>
 
         <main class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-
-            <!-- Columna 1: Formulario de Recolección de Datos -->
+            <!-- Formulario -->
             <div class="lg:col-span-1 bg-white p-6 rounded-xl shadow-lg border border-gray-100 h-fit">
                 <h2 class="text-xl font-semibold mb-6 text-gray-800">1. Registrar Nueva Toma</h2>
 
@@ -133,50 +78,37 @@
                 <div id="status-message" class="p-3 mb-4 rounded-lg font-medium text-sm hidden" role="alert"></div>
 
                 <form id="data-form">
-                    <!-- Fecha de Toma de Datos -->
                     <div class="mb-4">
                         <label for="fecha" class="block text-sm font-medium text-gray-700 mb-1">Fecha de Toma de Datos</label>
                         <input type="date" id="fecha" required class="form-input">
                     </div>
 
-                    <!-- Nº cédula Beneficiario/a -->
                     <div class="mb-4">
                         <label for="cedula" class="block text-sm font-medium text-gray-700 mb-1">Nº cédula Beneficiario/a</label>
                         <input type="text" id="cedula" placeholder="Ingrese Nº cédula" required class="form-input">
                     </div>
 
-                    <!-- Nombre Beneficiario/a -->
                     <div class="mb-4">
                         <label for="nombreBeneficiario" class="block text-sm font-medium text-gray-700 mb-1">Nombre Beneficiario/a</label>
                         <input type="text" id="nombreBeneficiario" placeholder="Nombre completo" required class="form-input">
                     </div>
 
-                    <!-- Actividad Realizada -->
+                    <!-- CHECKBOXES MÓVIL -->
                     <div class="mb-4">
-                        <label for="actividadRealizada" class="block text-sm font-medium text-gray-700 mb-1">Actividad Realizada</label>
-                        <select id="actividadRealizada" required class="form-input bg-white">
-                            <option value="" disabled selected>Seleccione la actividad</option>
-                            <option value="Rastra">Rastra</option>
-                            <option value="Subsolado">Subsolado</option>
-                            <option value="Encalado">Encalado</option>
-                            <option value="Plantación">Plantación</option>
-                            <option value="Fertilización">Fertilización</option>
-                            <option value="Aplicación de gel">Aplicación de gel</option>
-                            <option value="Riego">Riego</option>
-                            <option value="Control de hormigas">Control de hormigas</option>
-                            <option value="Carpida">Carpida</option>
-                            <option value="Muestra de suelo">Muestra de suelo</option>
-                            <option value="Inventario forestal">Inventario forestal</option>
-                        </select>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">
+                            Actividades Realizadas <span class="text-xs text-gray-500">(toca para seleccionar)</span>
+                        </label>
+                        <div id="actividades-container" class="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-48 overflow-y-auto p-2 bg-gray-50 rounded-lg border border-gray-200">
+                            <!-- Generado con JS -->
+                        </div>
+                        <p id="actividades-error" class="text-red-600 text-xs mt-1 hidden">Selecciona al menos una actividad.</p>
                     </div>
 
-                    <!-- Nombre del Técnico o Puntero -->
                     <div class="mb-4">
                         <label for="tecnicoPuntero" class="block text-sm font-medium text-gray-700 mb-1">Nombre del Técnico o Puntero</label>
                         <input type="text" id="tecnicoPuntero" placeholder="Ingrese nombre" required class="form-input">
                     </div>
 
-                    <!-- Ubicación GPS (se llenará automáticamente) -->
                     <div class="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
                         <p class="text-sm font-medium text-blue-700">
                             <span class="font-bold">Ubicación GPS:</span>
@@ -185,7 +117,6 @@
                             </span>
                         </p>
                         <p class="text-xs text-blue-600 mt-1 hidden" id="gps-coords"></p>
-                        <!-- Botón de reintento -->
                         <div id="gps-retry-container" class="mt-2 hidden">
                              <button type="button" id="retry-gps-btn"
                                      class="px-3 py-1 text-xs font-semibold rounded-md bg-yellow-500 text-white hover:bg-yellow-600 transition duration-150">
@@ -194,7 +125,6 @@
                         </div>
                     </div>
 
-                    <!-- ID de Usuario -->
                     <div id="user-info" class="text-xs text-gray-500 mb-4 p-2 bg-gray-100 rounded-lg">
                         Tu ID de Sesión: <span id="user-id-display" class="font-mono text-gray-700 break-all">Cargando...</span>
                     </div>
@@ -206,16 +136,22 @@
                 </form>
             </div>
 
-            <!-- Columna 2/3: Mapa de Datos Registrados -->
+            <!-- Mapa con Selector de Capa -->
             <div class="lg:col-span-2">
-                <h2 class="text-xl font-semibold mb-4 text-gray-800">2. Mapa de Registros Totales</h2>
+                <div class="flex justify-between items-center mb-2">
+                    <h2 class="text-xl font-semibold text-gray-800">2. Mapa de Registros Totales</h2>
+                    <div class="flex gap-1">
+                        <button id="map-street-btn" class="px-3 py-1 text-xs font-semibold rounded bg-blue-600 text-white shadow-sm">Calle</button>
+                        <button id="map-satellite-btn" class="px-3 py-1 text-xs font-semibold rounded bg-gray-300 text-gray-700 shadow-sm">Satélite</button>
+                    </div>
+                </div>
                 <div id="map"></div>
                 <p class="text-xs text-gray-500 mt-3 p-2 bg-gray-100 rounded-lg">
-                    Los puntos en el mapa son los datos registrados por todos los usuarios en esta aplicación.
+                    Los puntos en el mapa son los datos registrados por todos los usuarios.
                 </p>
             </div>
-            
-            <!-- Sección: Tabla de Datos -->
+
+            <!-- Tabla -->
             <div class="lg:col-span-3 mt-8">
                 <div class="flex justify-between items-center mb-4">
                     <h2 class="text-xl font-semibold text-gray-800">3. Registros en Tabla (Editable)</h2>
@@ -227,55 +163,41 @@
                     <p class="text-gray-500 italic">Cargando datos...</p>
                 </div>
             </div>
-
         </main>
     </div>
 
-    <!-- Modal de Edición (Actualizado para z-index alto) -->
+    <!-- Modal Edición -->
     <div id="edit-modal" class="modal">
         <div class="modal-content">
-            <span class="close">&times;</span>
+            <span class="close">×</span>
             <h3 class="text-xl font-bold mb-4 text-gray-800">Editar Registro</h3>
             <form id="edit-form">
                 <input type="hidden" id="edit-doc-id">
-                <!-- Fecha -->
                 <div class="mb-4">
                     <label for="edit-fecha" class="block text-sm font-medium text-gray-700 mb-1">Fecha de Toma de Datos</label>
                     <input type="date" id="edit-fecha" required class="form-input">
                 </div>
-                <!-- Nº cédula Beneficiario/a -->
                 <div class="mb-4">
                     <label for="edit-cedula" class="block text-sm font-medium text-gray-700 mb-1">Nº cédula Beneficiario/a</label>
                     <input type="text" id="edit-cedula" required class="form-input">
                 </div>
-                <!-- Nombre Beneficiario/a -->
                 <div class="mb-4">
                     <label for="edit-nombreBeneficiario" class="block text-sm font-medium text-gray-700 mb-1">Nombre Beneficiario/a</label>
                     <input type="text" id="edit-nombreBeneficiario" required class="form-input">
                 </div>
-                <!-- Actividad Realizada -->
+
+                <!-- CHECKBOXES EN MODAL -->
                 <div class="mb-4">
-                    <label for="edit-actividadRealizada" class="block text-sm font-medium text-gray-700 mb-1">Actividad Realizada</label>
-                    <select id="edit-actividadRealizada" required class="form-input bg-white">
-                        <option value="Rastra">Rastra</option>
-                        <option value="Subsolado">Subsolado</option>
-                        <option value="Encalado">Encalado</option>
-                        <option value="Plantación">Plantación</option>
-                        <option value="Fertilización">Fertilización</option>
-                        <option value="Aplicación de gel">Aplicación de gel</option>
-                        <option value="Riego">Riego</option>
-                        <option value="Control de hormigas">Control de hormigas</option>
-                        <option value="Carpida">Carpida</option>
-                        <option value="Muestra de suelo">Muestra de suelo</option>
-                        <option value="Inventario forestal">Inventario forestal</option>
-                    </select>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Actividades Realizadas</label>
+                    <div id="edit-actividades-container" class="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-48 overflow-y-auto p-2 bg-gray-50 rounded-lg border border-gray-200">
+                        <!-- Generado con JS -->
+                    </div>
                 </div>
-                <!-- Nombre del Técnico o Puntero -->
+
                 <div class="mb-4">
                     <label for="edit-tecnicoPuntero" class="block text-sm font-medium text-gray-700 mb-1">Nombre del Técnico o Puntero</label>
                     <input type="text" id="edit-tecnicoPuntero" required class="form-input">
                 </div>
-                <!-- Coordenadas (solo lectura, para referencia) -->
                 <div class="mb-4 p-3 bg-gray-50 rounded-lg">
                     <p class="text-sm font-medium text-gray-700">Coordenadas GPS (no editables):</p>
                     <p id="edit-coords" class="text-xs text-gray-500 mt-1"></p>
@@ -288,19 +210,17 @@
         </div>
     </div>
 
-    <!-- Carga de Leaflet JS -->
+    <!-- Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
         integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
         crossorigin=""></script>
 
-    <!-- Carga de Firebase SDKs -->
+    <!-- Firebase + App -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, onAuthStateChanged, setPersistence, browserSessionPersistence } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, addDoc, onSnapshot, collection, query, serverTimestamp, updateDoc, doc, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-        import { setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // Tu configuración de Firebase
         const firebaseConfig = {
             apiKey: "AIzaSyAScFFccOaYb4JpmNNB3sl9-7hdL7eNTGk",
             authDomain: "datawood-2025.firebaseapp.com",
@@ -310,35 +230,17 @@
             appId: "1:417334727561:web:bfb3b53cf670646b7f4758"
         };
 
-        let db = null;
-        let auth = null;
-        let map = null;
-        let userId = null;
-        let isAuthReady = false;
-        let currentCoords = null; 
-        let allFieldData = []; 
-        let sortState = { key: 'timestamp', direction: 'desc' }; 
-        let connectionError = false;
+        let db = null, auth = null, map = null, userId = null, isAuthReady = false, currentCoords = null, allFieldData = [], sortState = { key: 'timestamp', direction: 'desc' }, connectionError = false;
+        let streetLayer, satelliteLayer, currentLayer = 'street';
 
-        const form = document.getElementById('data-form');
-        const submitBtn = document.getElementById('submit-btn');
-        const statusMessage = document.getElementById('status-message');
-        const gpsStatus = document.getElementById('gps-status');
-        const gpsCoordsDisplay = document.getElementById('gps-coords');
-        const userIdDisplay = document.getElementById('user-id-display');
-        const loadingAuth = document.getElementById('loading-auth');
-        const retryGpsBtn = document.getElementById('retry-gps-btn');
-        const gpsRetryContainer = document.getElementById('gps-retry-container');
-        const demoModeBanner = document.getElementById('demo-mode-banner');
+        const form = document.getElementById('data-form'), submitBtn = document.getElementById('submit-btn'), statusMessage = document.getElementById('status-message'),
+              gpsStatus = document.getElementById('gps-status'), gpsCoordsDisplay = document.getElementById('gps-coords'), userIdDisplay = document.getElementById('user-id-display'),
+              loadingAuth = document.getElementById('loading-auth'), retryGpsBtn = document.getElementById('retry-gps-btn'), gpsRetryContainer = document.getElementById('gps-retry-container'),
+              demoModeBanner = document.getElementById('demo-mode-banner'), editModal = document.getElementById('edit-modal'), editForm = document.getElementById('edit-form'),
+              closeModal = document.querySelector('.close'), cancelEditBtn = document.getElementById('cancel-edit-btn'), exportExcelBtn = document.getElementById('export-excel-btn'),
+              mapStreetBtn = document.getElementById('map-street-btn'), mapSatelliteBtn = document.getElementById('map-satellite-btn');
 
-        // Elementos del Modal y Export
-        const editModal = document.getElementById('edit-modal');
-        const editForm = document.getElementById('edit-form');
-        const closeModal = document.querySelector('.close');
-        const cancelEditBtn = document.getElementById('cancel-edit-btn');
-        const exportExcelBtn = document.getElementById('export-excel-btn');
-
-        const COLLECTION_NAME = 'field_data_geolocalizados'; 
+        const COLLECTION_NAME = 'field_data_geolocalizados';
 
         const activityColors = {
             'Rastra': { bg: 'bg-red-500', text: 'text-red-700', hex: '#ef4444' },
@@ -354,622 +256,381 @@
             'Inventario forestal': { bg: 'bg-pink-500', text: 'text-pink-700', hex: '#ec4899' },
         };
 
-        // --- Utilidades UI (igual que antes) ---
+        // --- CHECKBOXES MÓVIL ---
+        const actividadesList = [
+            "Rastra", "Subsolado", "Encalado", "Plantación", "Fertilización",
+            "Aplicación de hidrogel", "Riego", "Control de hormigas", "Carpida",
+            "Muestra de suelo", "Inventario forestal"
+        ];
+
+        function createActivityCheckboxes(containerId, namePrefix, selected = []) {
+            const container = document.getElementById(containerId);
+            container.innerHTML = '';
+            actividadesList.forEach(act => {
+                const checked = selected.includes(act) ? 'checked' : '';
+                const id = `${namePrefix}-${act.replace(/\s+/g, '-').toLowerCase()}`;
+                const label = document.createElement('label');
+                label.className = 'flex items-center space-x-2 p-2 rounded-lg hover:bg-white cursor-pointer transition';
+                label.innerHTML = `
+                    <input type="checkbox" name="${namePrefix}" value="${act}" ${checked} 
+                           class="w-4 h-4 text-blue-600 rounded focus:ring-blue-500">
+                    <span class="text-sm font-medium text-gray-700">${act}</span>
+                `;
+                container.appendChild(label);
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            createActivityCheckboxes('actividades-container', 'actividad');
+            createActivityCheckboxes('edit-actividades-container', 'edit-actividad');
+        });
+
+        // --- UI ---
         function showStatus(message, type = 'info') {
             statusMessage.textContent = message;
             statusMessage.classList.remove('hidden', 'bg-red-100', 'text-red-700', 'bg-green-100', 'text-green-700', 'bg-yellow-100', 'text-yellow-700', 'bg-blue-100', 'text-blue-700');
-            if (type === 'error') {
-                statusMessage.classList.add('bg-red-100', 'text-red-700');
-                demoModeBanner.classList.remove('hidden');
-            } else if (type === 'success') {
-                statusMessage.classList.add('bg-green-100', 'text-green-700');
-                demoModeBanner.classList.add('hidden');
-            } else if (type === 'info') {
-                statusMessage.classList.add('bg-blue-100', 'text-blue-700');
-            } else {
-                statusMessage.classList.add('bg-yellow-100', 'text-yellow-700');
-            }
+            if (type === 'error') { statusMessage.classList.add('bg-red-100', 'text-red-700'); demoModeBanner.classList.remove('hidden'); }
+            else if (type === 'success') { statusMessage.classList.add('bg-green-100', 'text-green-700'); demoModeBanner.classList.add('hidden'); }
+            else if (type === 'info') statusMessage.classList.add('bg-blue-100', 'text-blue-700');
+            else statusMessage.classList.add('bg-yellow-100', 'text-yellow-700');
             statusMessage.classList.remove('hidden');
         }
 
         function toggleForm(enabled) {
             submitBtn.disabled = !enabled;
-            if (enabled) {
-                submitBtn.textContent = 'Guardar Datos y Ubicación';
-            } else {
-                submitBtn.textContent = 'Inicializando...';
-            }
+            submitBtn.textContent = enabled ? 'Guardar Datos y Ubicación' : 'Inicializando...';
         }
 
-        // --- Inicialización Firebase (igual) ---
+        // --- Firebase ---
         async function initializeFirebase() {
             loadingAuth.classList.remove('hidden');
-            
             try {
                 const app = initializeApp(firebaseConfig);
-                db = getFirestore(app);
-                auth = getAuth(app);
-                setLogLevel('Debug');
-
+                db = getFirestore(app); auth = getAuth(app);
                 await setPersistence(auth, browserSessionPersistence);
                 await signInAnonymously(auth);
 
-                onAuthStateChanged(auth, (user) => {
+                onAuthStateChanged(auth, user => {
                     loadingAuth.classList.add('hidden');
                     if (user) {
-                        userId = user.uid;
-                        userIdDisplay.textContent = userId;
-                        isAuthReady = true;
-                        toggleForm(true);
-                        initializeMap();
-                        setupRealtimeListener();
-                        getLocationAndUpdateUI();
-                        demoModeBanner.classList.add('hidden');
-                        showStatus('Firebase conectado exitosamente. ¡Listo para registrar datos!', 'success');
+                        userId = user.uid; userIdDisplay.textContent = userId; isAuthReady = true; toggleForm(true);
+                        initializeMap(); setupRealtimeListener(); getLocationAndUpdateUI(); demoModeBanner.classList.add('hidden');
+                        showStatus('Firebase conectado. ¡Listo!', 'success');
                     } else {
-                        userId = crypto.randomUUID(); 
-                        userIdDisplay.textContent = userId + ' (Anónimo - Fallo Auth)';
-                        showStatus('Advertencia: Fallo en la autenticación, usando ID anónimo. Revisa las reglas de seguridad.', 'error');
-                        isAuthReady = true;
-                        toggleForm(true);
-                        initializeMap();
-                        setupRealtimeListener();
-                        getLocationAndUpdateUI();
-                        connectionError = true;
+                        userId = crypto.randomUUID(); userIdDisplay.textContent = userId + ' (Anónimo)';
+                        showStatus('Fallo auth, ID anónimo.', 'error'); isAuthReady = true; toggleForm(true);
+                        initializeMap(); setupRealtimeListener(); getLocationAndUpdateUI(); connectionError = true;
                     }
                 });
-
             } catch (error) {
-                console.error("Error al inicializar Firebase o autenticar:", error);
-                showStatus(`Error crítico al iniciar la app: ${error.message}. Activando modo temporal.`, 'error');
-                
-                connectionError = true;
-                userId = 'DEMO_USER_' + Math.random().toString(36).substring(2, 8).toUpperCase();
-                userIdDisplay.textContent = userId;
-                isAuthReady = true;
-                toggleForm(true);
-                initializeMap();
-                renderData();
-                getLocationAndUpdateUI();
-                loadingAuth.classList.add('hidden');
-                demoModeBanner.classList.remove('hidden');
+                console.error(error); showStatus(`Error: ${error.message}. Modo temporal.`, 'error');
+                connectionError = true; userId = 'DEMO_USER_' + Math.random().toString(36).substring(2,8).toUpperCase();
+                userIdDisplay.textContent = userId; isAuthReady = true; toggleForm(true);
+                initializeMap(); renderData(); getLocationAndUpdateUI(); loadingAuth.classList.add('hidden'); demoModeBanner.classList.remove('hidden');
             }
         }
 
-        // --- Geolocalización (igual) ---
+        // --- Geolocalización ---
         function getGeolocationPromise() {
             return new Promise((resolve, reject) => {
                 if (navigator.geolocation) {
-                    navigator.geolocation.getCurrentPosition(
-                        resolve,
-                        reject,
-                        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
-                    );
-                } else {
-                    reject(new Error('Geolocalización no soportada.'));
-                }
+                    navigator.geolocation.getCurrentPosition(resolve, reject, { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 });
+                } else reject(new Error('Geolocalización no soportada.'));
             });
         }
 
         async function getLocationAndUpdateUI(isFormSubmission = false) {
-            currentCoords = null; 
-
-            gpsStatus.textContent = 'Obteniendo ubicación...';
-            gpsStatus.classList.remove('text-blue-600', 'text-green-600', 'text-red-600');
-            gpsStatus.classList.add('text-yellow-600');
-            gpsCoordsDisplay.classList.add('hidden');
-            gpsRetryContainer.classList.add('hidden');
-            
-            if (isFormSubmission) {
-                 submitBtn.disabled = true;
-            }
-
+            currentCoords = null; gpsStatus.textContent = 'Obteniendo...'; gpsStatus.classList.add('text-yellow-600'); gpsCoordsDisplay.classList.add('hidden'); gpsRetryContainer.classList.add('hidden');
+            if (isFormSubmission) submitBtn.disabled = true;
             try {
-                const position = await getGeolocationPromise();
-                currentCoords = {
-                    lat: position.coords.latitude,
-                    lng: position.coords.longitude
-                };
-                
-                gpsStatus.textContent = '¡Ubicación obtenida!';
-                gpsStatus.classList.remove('text-yellow-600');
-                gpsStatus.classList.add('text-green-600');
-                gpsCoordsDisplay.textContent = `Lat: ${currentCoords.lat.toFixed(6)}, Lng: ${currentCoords.lng.toFixed(6)}`;
-                gpsCoordsDisplay.classList.remove('hidden');
-
-                if (isFormSubmission) {
-                    return currentCoords; 
-                }
-
+                const pos = await getGeolocationPromise();
+                currentCoords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+                gpsStatus.textContent = '¡Ubicación obtenida!'; gpsStatus.classList.remove('text-yellow-600'); gpsStatus.classList.add('text-green-600');
+                gpsCoordsDisplay.textContent = `Lat: ${currentCoords.lat.toFixed(6)}, Lng: ${currentCoords.lng.toFixed(6)}`; gpsCoordsDisplay.classList.remove('hidden');
+                return currentCoords;
             } catch (error) {
-                let msg = "Error de geolocalización. Asegúrate de tener el GPS activado.";
-                if (error.code === 1) msg = "Acceso a GPS denegado por el usuario. Por favor, revisa los permisos del navegador (a la izquierda de la URL) e intenta de nuevo.";
+                let msg = "Error GPS. Activa el GPS.";
+                if (error.code === 1) msg = "Permiso denegado. Revisa navegador.";
                 if (error.code === 2) msg = "Ubicación no disponible.";
-                if (error.code === 3) msg = "Tiempo de espera agotado.";
-                if (error.message.includes('soportada')) msg = error.message;
-
-                gpsStatus.textContent = `Error GPS: ${msg}`;
-                gpsStatus.classList.remove('text-yellow-600', 'text-green-600');
-                gpsStatus.classList.add('text-red-600');
-                
+                if (error.code === 3) msg = "Tiempo agotado.";
+                gpsStatus.textContent = `Error: ${msg}`; gpsStatus.classList.remove('text-yellow-600','text-green-600'); gpsStatus.classList.add('text-red-600');
                 gpsRetryContainer.classList.remove('hidden');
-
-                if (isFormSubmission) {
-                    showStatus(`No se pudo obtener la ubicación para guardar: ${msg}`, 'error');
-                }
-                
-                return null; 
+                if (isFormSubmission) showStatus(`No se obtuvo ubicación: ${msg}`, 'error');
+                return null;
             } finally {
-                if (isFormSubmission) {
-                    submitBtn.disabled = false;
-                    submitBtn.textContent = 'Guardar Datos y Ubicación';
-                }
+                if (isFormSubmission) { submitBtn.disabled = false; submitBtn.textContent = 'Guardar Datos y Ubicación'; }
             }
         }
 
-        // --- Guardar Nuevo (actualizado con nuevos campos) ---
+        // --- Guardar / Editar / Eliminar ---
         async function saveData(data) {
-            if (!isAuthReady) {
-                showStatus('La aplicación aún no está lista. Inténtalo de nuevo.', 'error');
-                return;
-            }
-
-            submitBtn.disabled = true;
-            submitBtn.textContent = 'Guardando...';
-
+            if (!isAuthReady) return showStatus('App no lista.', 'error');
+            submitBtn.disabled = true; submitBtn.textContent = 'Guardando...';
             try {
-                const record = {
-                    ...data,
-                    userId: userId,
-                    timestamp: connectionError ? new Date() : serverTimestamp()
-                };
-
-                if (connectionError) {
-                    record.id = allFieldData.length.toString();
-                    allFieldData.push(record);
-                    renderData();
-                    showStatus('Datos guardados en MODO TEMPORAL. No serán persistentes.', 'error');
-                } else {
-                    const collectionRef = collection(db, COLLECTION_NAME);
-                    await addDoc(collectionRef, record);
-                    showStatus(`Datos guardados exitosamente en Firestore. Colección: ${COLLECTION_NAME}`, 'success');
-                }
-                
-                form.reset();
-                currentCoords = null;
-                gpsStatus.textContent = 'Haz clic en Guardar para obtener la ubicación.';
-                gpsStatus.classList.remove('text-green-600', 'text-red-600', 'text-yellow-600');
-                gpsStatus.classList.add('text-blue-600');
-                gpsCoordsDisplay.classList.add('hidden');
-                gpsRetryContainer.classList.add('hidden');
-
-            } catch (error) {
-                console.error("Error al guardar:", error);
-                showStatus(`Error al guardar: ${error.message}`, 'error');
-            } finally {
-                submitBtn.disabled = false;
-                submitBtn.textContent = 'Guardar Datos y Ubicación';
-            }
+                const record = { ...data, userId, timestamp: connectionError ? new Date() : serverTimestamp() };
+                if (connectionError) { record.id = allFieldData.length.toString(); allFieldData.push(record); renderData(); showStatus('Guardado temporal.', 'error'); }
+                else { await addDoc(collection(db, COLLECTION_NAME), record); showStatus(`Guardado en ${COLLECTION_NAME}`, 'success'); }
+                form.reset(); currentCoords = null; gpsStatus.textContent = 'Haz clic en Guardar para obtener ubicación.'; gpsStatus.classList.remove('text-green-600','text-red-600','text-yellow-600'); gpsStatus.classList.add('text-blue-600'); gpsCoordsDisplay.classList.add('hidden'); gpsRetryContainer.classList.add('hidden');
+            } catch (error) { console.error(error); showStatus(`Error: ${error.message}`, 'error'); }
+            finally { submitBtn.disabled = false; submitBtn.textContent = 'Guardar Datos y Ubicación'; }
         }
 
-        // --- Editar Registro (actualizado con nuevos campos) ---
         async function editData(docId, data) {
-            if (connectionError) {
-                showStatus('Edición no disponible en modo temporal.', 'error');
-                return;
-            }
-
-            try {
-                const docRef = doc(db, COLLECTION_NAME, docId);
-                await updateDoc(docRef, data);
-                showStatus('Registro actualizado exitosamente.', 'success');
-                editModal.style.display = 'none';  // Cerrar modal
-            } catch (error) {
-                console.error("Error al editar:", error);
-                showStatus(`Error al editar: ${error.message}`, 'error');
-            }
+            if (connectionError) return showStatus('Edición no disponible en temporal.', 'error');
+            try { await updateDoc(doc(db, COLLECTION_NAME, docId), data); showStatus('Actualizado.', 'success'); editModal.style.display = 'none'; }
+            catch (error) { console.error(error); showStatus(`Error: ${error.message}`, 'error'); }
         }
 
-        // --- Eliminar Registro (igual) ---
         async function deleteData(docId) {
-            if (connectionError) {
-                // Modo demo: Remover de array local
-                const index = allFieldData.findIndex(item => item.id === docId);
-                if (index > -1) {
-                    allFieldData.splice(index, 1);
-                    renderData();
-                    showStatus('Registro eliminado en MODO TEMPORAL.', 'success');
-                }
-                return;
-            }
-
-            try {
-                const docRef = doc(db, COLLECTION_NAME, docId);
-                await deleteDoc(docRef);
-                showStatus('Registro eliminado exitosamente.', 'success');
-            } catch (error) {
-                console.error("Error al eliminar:", error);
-                showStatus(`Error al eliminar: ${error.message}`, 'error');
-            }
+            if (connectionError) { const idx = allFieldData.findIndex(i => i.id === docId); if (idx > -1) { allFieldData.splice(idx,1); renderData(); showStatus('Eliminado temporal.', 'success'); } return; }
+            try { await deleteDoc(doc(db, COLLECTION_NAME, docId)); showStatus('Eliminado.', 'success'); }
+            catch (error) { console.error(error); showStatus(`Error: ${error.message}`, 'error'); }
         }
 
-        // --- Exportar a Excel (actualizado con nuevos campos) ---
+        // --- Exportar Excel ---
         function exportToExcel() {
-            if (allFieldData.length === 0) {
-                showStatus('No hay datos para exportar.', 'info');
-                return;
-            }
-
-            // Preparar datos para Excel
-            const exportData = allFieldData.map(item => {
-                let timestampText = 'N/A';
-                if (item.timestamp) {
-                    const dateObj = item.timestamp instanceof Date ? item.timestamp : (item.timestamp.toDate ? item.timestamp.toDate() : new Date(item.timestamp));
-                    timestampText = dateObj.toLocaleString('es-ES');
+            if (!allFieldData.length) return showStatus('Sin datos.', 'info');
+            const exportData = allFieldData.map(i => {
+                let ts = 'N/A'; if (i.timestamp) {
+                    const d = i.timestamp instanceof Date ? i.timestamp : (i.timestamp.toDate?.() ?? new Date(i.timestamp));
+                    ts = d.toLocaleString('es-ES');
                 }
                 return {
-                    'Fecha': item.fecha,
-                    'Nº cédula Beneficiario/a': item.cedula,
-                    'Nombre Beneficiario/a': item.nombreBeneficiario,
-                    'Actividad Realizada': item.actividadRealizada,
-                    'Nombre del Técnico o Puntero': item.tecnicoPuntero,
-                    'Lat': item.lat,
-                    'Lng': item.lng,
-                    'Timestamp': timestampText,
-                    'User ID': item.userId
+                    'Fecha': i.fecha,
+                    'Nº cédula Beneficiario/a': i.cedula,
+                    'Nombre Beneficiario/a': i.nombreBeneficiario,
+                    'Actividad Realizada': Array.isArray(i.actividadRealizada) ? i.actividadRealizada.join(', ') : i.actividadRealizada,
+                    'Nombre del Técnico o Puntero': i.tecnicoPuntero,
+                    'Lat': i.lat, 'Lng': i.lng, 'Timestamp': ts, 'User ID': i.userId
                 };
             });
-
             const ws = XLSX.utils.json_to_sheet(exportData);
-            const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, "Registros de Campo");
-            XLSX.writeFile(wb, "registros_campo.xlsx");
-            showStatus('Archivo Excel descargado exitosamente.', 'success');
+            const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "Registros de Campo");
+            XLSX.writeFile(wb, "registros_campo.xlsx"); showStatus('Excel descargado.', 'success');
         }
 
-        // --- Manejador Formulario Nuevo (actualizado con nuevos campos) ---
-        form.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            
-            showStatus('Validando datos y procesando ubicación...', 'info');
-
-            let coordsToSave = currentCoords;
-
-            if (!coordsToSave) {
-                coordsToSave = await getLocationAndUpdateUI(true);
-            }
-            
-            if (!coordsToSave) {
-                return;
-            }
-
+        // --- Formularios ---
+        form.addEventListener('submit', async e => {
+            e.preventDefault(); showStatus('Procesando...', 'info');
+            const checked = document.querySelectorAll('input[name="actividad"]:checked');
+            if (checked.length === 0) { document.getElementById('actividades-error').classList.remove('hidden'); return showStatus('Selecciona al menos una actividad.', 'error'); }
+            document.getElementById('actividades-error').classList.add('hidden');
+            let coords = currentCoords; if (!coords) coords = await getLocationAndUpdateUI(true); if (!coords) return;
+            const actividades = Array.from(checked).map(c => c.value);
             const data = {
                 fecha: document.getElementById('fecha').value,
                 cedula: document.getElementById('cedula').value,
                 nombreBeneficiario: document.getElementById('nombreBeneficiario').value,
-                actividadRealizada: document.getElementById('actividadRealizada').value,
+                actividadRealizada: actividades,
                 tecnicoPuntero: document.getElementById('tecnicoPuntero').value,
             };
-
-            const fullData = { ...data, lat: coordsToSave.lat, lng: coordsToSave.lng };
-            await saveData(fullData);
-        });
-        
-        retryGpsBtn.addEventListener('click', () => {
-             getLocationAndUpdateUI();
+            await saveData({ ...data, lat: coords.lat, lng: coords.lng });
         });
 
-        // --- Manejadores Modal (igual) ---
-        closeModal.addEventListener('click', () => {
-            editModal.style.display = 'none';
-        });
+        retryGpsBtn.addEventListener('click', () => getLocationAndUpdateUI());
 
-        cancelEditBtn.addEventListener('click', () => {
-            editModal.style.display = 'none';
-        });
-
-        window.addEventListener('click', (e) => {
-            if (e.target === editModal) {
-                editModal.style.display = 'none';
-            }
-        });
-
-        editForm.addEventListener('submit', async (e) => {
+        editForm.addEventListener('submit', async e => {
             e.preventDefault();
             const docId = document.getElementById('edit-doc-id').value;
-            const updatedData = {
+            const checked = document.querySelectorAll('input[name="edit-actividad"]:checked');
+            if (checked.length === 0) return showStatus('Selecciona al menos una actividad.', 'error');
+            const actividades = Array.from(checked).map(c => c.value);
+            const updated = {
                 fecha: document.getElementById('edit-fecha').value,
                 cedula: document.getElementById('edit-cedula').value,
                 nombreBeneficiario: document.getElementById('edit-nombreBeneficiario').value,
-                actividadRealizada: document.getElementById('edit-actividadRealizada').value,
+                actividadRealizada: actividades,
                 tecnicoPuntero: document.getElementById('edit-tecnicoPuntero').value,
             };
-            await editData(docId, updatedData);
+            await editData(docId, updated);
         });
 
-        // Manejador Export Excel
+        closeModal.addEventListener('click', () => editModal.style.display = 'none');
+        cancelEditBtn.addEventListener('click', () => editModal.style.display = 'none');
+        window.addEventListener('click', e => { if (e.target === editModal) editModal.style.display = 'none'; });
         exportExcelBtn.addEventListener('click', exportToExcel);
 
-        // Función para abrir modal con datos (actualizado con nuevos campos)
+        // --- Modal ---
         function openEditModal(item) {
             document.getElementById('edit-doc-id').value = item.id;
             document.getElementById('edit-fecha').value = item.fecha;
             document.getElementById('edit-cedula').value = item.cedula;
             document.getElementById('edit-nombreBeneficiario').value = item.nombreBeneficiario;
-            document.getElementById('edit-actividadRealizada').value = item.actividadRealizada;
             document.getElementById('edit-tecnicoPuntero').value = item.tecnicoPuntero;
             document.getElementById('edit-coords').textContent = `${item.lat.toFixed(4)}, ${item.lng.toFixed(4)}`;
+            createActivityCheckboxes('edit-actividades-container', 'edit-actividad', Array.isArray(item.actividadRealizada) ? item.actividadRealizada : []);
             editModal.style.display = 'block';
         }
 
-        // Función global para botón editar (desde onclick en tabla)
-        window.openEditModalFromRow = function(button) {
+        window.openEditModalFromRow = button => {
             const row = button.closest('tr');
-            const itemStr = row.getAttribute('data-item');
-            const item = JSON.parse(itemStr.replace(/&#39;/g, "'"));
+            const item = JSON.parse(row.getAttribute('data-item').replace(/&#39;/g, "'"));
             openEditModal(item);
         };
 
-        // Función global para botón eliminar (desde onclick en tabla)
-        window.deleteFromRow = function(button) {
+        window.deleteFromRow = button => {
             const row = button.closest('tr');
             const docId = row.getAttribute('data-doc-id');
-            if (confirm('¿Estás seguro de que quieres eliminar este registro? Esta acción no se puede deshacer.')) {
-                deleteData(docId);
-            }
+            if (confirm('¿Eliminar este registro?')) deleteData(docId);
         };
 
-        // --- Mapa (igual) ---
+        // --- Mapa con Selector de Capa ---
         function initializeMap() {
-            const initialCoords = [-23.4425, -58.4438];
-            const initialZoom = 6;
+            map = L.map('map').setView([-23.4425, -58.4438], 6);
 
-            map = L.map('map').setView(initialCoords, initialZoom);
-
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            // Capa de calle (OpenStreetMap)
+            streetLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-            }).addTo(map);
+            });
 
+            // Capa satelital (Esri World Imagery)
+            satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+                attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
+            });
+
+            // Iniciar con calle
+            streetLayer.addTo(map);
             L.control.scale().addTo(map);
-
             markerGroup.addTo(map);
-        }
 
+            // Botones de cambio
+            mapStreetBtn.addEventListener('click', () => {
+                if (currentLayer !== 'street') {
+                    map.removeLayer(satelliteLayer);
+                    map.addLayer(streetLayer);
+                    currentLayer = 'street';
+                    mapStreetBtn.classList.remove('bg-gray-300', 'text-gray-700'); mapStreetBtn.classList.add('bg-blue-600', 'text-white');
+                    mapSatelliteBtn.classList.remove('bg-blue-600', 'text-white'); mapSatelliteBtn.classList.add('bg-gray-300', 'text-gray-700');
+                }
+            });
+
+            mapSatelliteBtn.addEventListener('click', () => {
+                if (currentLayer !== 'satellite') {
+                    map.removeLayer(streetLayer);
+                    map.addLayer(satelliteLayer);
+                    currentLayer = 'satellite';
+                    mapSatelliteBtn.classList.remove('bg-gray-300', 'text-gray-700'); mapSatelliteBtn.classList.add('bg-blue-600', 'text-white');
+                    mapStreetBtn.classList.remove('bg-blue-600', 'text-white'); mapStreetBtn.classList.add('bg-gray-300', 'text-gray-700');
+                }
+            });
+        }
         const markerGroup = L.layerGroup();
 
-        // --- Ordenamiento (igual) ---
+        // --- Tabla y Mapa ---
+        function renderMapAndTable(data) {
+            if (!map) return;
+            markerGroup.clearLayers(); const bounds = [];
+            data.forEach(item => {
+                const coords = [item.lat, item.lng]; bounds.push(coords);
+                const firstAct = Array.isArray(item.actividadRealizada) ? item.actividadRealizada[0] : null;
+                const cfg = firstAct ? (activityColors[firstAct] || { bg: 'bg-gray-500', hex: '#6b7280' }) : { bg: 'bg-gray-500', hex: '#6b7280' };
+                const icon = L.divIcon({ className: 'custom-marker', html: `<div class="${cfg.bg} w-4 h-4 rounded-full border-2 border-white shadow-lg transform rotate-45"></div>`, iconSize: [20,20], iconAnchor: [10,10] });
+                const popup = `
+                    <div style="font-family: 'Inter', sans-serif;">
+                        <strong style="color:#1f2937;">Fecha:</strong> ${new Date(item.fecha+'T00:00:00').toLocaleDateString('es-ES',{year:'numeric',month:'long',day:'numeric'})}<br>
+                        <strong style="color:#1f2937;">Nº cédula:</strong> ${item.cedula}<br>
+                        <strong style="color:#1f2937;">Nombre Beneficiario/a:</strong> ${item.nombreBeneficiario}<br>
+                        <strong style="color:#1f2937;">Actividades:</strong><br>
+                        ${Array.isArray(item.actividadRealizada) ? item.actividadRealizada.map(a => {
+                            const c = activityColors[a] || { hex: '#6b7280' };
+                            return `<span style="display:inline-block;background:${c.hex};color:white;padding:2px 6px;border-radius:4px;font-size:11px;margin:1px 0;">${a}</span>`;
+                        }).join('') : '<em style="color:#9ca3af">Ninguna</em>'}<br>
+                        <strong style="color:#1f2937;">Técnico/Puntero:</strong> ${item.tecnicoPuntero}<br>
+                        <hr style="margin:4px 0;">
+                        <em style="font-size:10px;color:#6b7280;">Registrado por: ${item.userId === userId ? 'Tú' : item.userId.substring(0,8)+"..."}</em>
+                    </div>`;
+                L.marker(coords, { icon }).bindPopup(popup).addTo(markerGroup);
+            });
+            if (bounds.length) map.fitBounds(bounds, { padding: [50,50] });
+
+            const container = document.getElementById('data-table-container');
+            if (!data.length) { container.innerHTML = '<p class="text-gray-500 italic">No hay datos.</p>'; return; }
+            const sorted = sortData([...data], sortState.key, sortState.direction);
+            const headers = [
+                {id:'fecha',name:'Fecha'},{id:'cedula',name:'Nº cédula Beneficiario/a'},{id:'nombreBeneficiario',name:'Nombre Beneficiario/a'},
+                {id:'actividadRealizada',name:'Actividades'},{id:'tecnicoPuntero',name:'Técnico/Puntero'},{id:'lat',name:'Lat/Lng'},
+                {id:'timestamp',name:'Registro'},{id:'actions',name:'Acciones'}
+            ];
+            let tableHTML = `<table class="min-w-full divide-y divide-gray-200"><thead class="bg-gray-50"><tr>
+                ${headers.map(h => {
+                    const icon = sortState.key === h.id && h.id !== 'actions' ? (sortState.direction === 'asc' ? '<span class="ml-1 text-xs">Up</span>' : '<span class="ml-1 text-xs">Down</span>') : '';
+                    return `<th scope="col" data-key="${h.id}" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider ${h.id === 'actions' ? '' : 'cursor-pointer hover:bg-gray-200'}">${h.name} ${icon}</th>`;
+                }).join('')}
+            </tr></thead><tbody class="bg-white divide-y divide-gray-200">
+                ${sorted.map(item => {
+                    let ts = 'N/A', dateObj = null;
+                    if (connectionError && item.timestamp instanceof Date) dateObj = item.timestamp;
+                    else if (item.timestamp?.toDate) dateObj = item.timestamp.toDate();
+                    if (dateObj) ts = dateObj.toLocaleTimeString('es-ES', {hour:'2-digit',minute:'2-digit',day:'2-digit',month:'2-digit'});
+                    const latLng = `${item.lat.toFixed(4)}, ${item.lng.toFixed(4)}`;
+                    return `<tr class="hover:bg-blue-50/50" data-lat="${item.lat}" data-lng="${item.lng}" data-item='${JSON.stringify(item).replace(/'/g,"&#39;")}' data-doc-id="${item.id}">
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${item.fecha}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${item.cedula}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${item.nombreBeneficiario}</td>
+                        <td class="px-6 py-4 text-sm">
+                            ${Array.isArray(item.actividadRealizada) ? item.actividadRealizada.map(a => {
+                                const c = activityColors[a] || { bg: 'bg-gray-500' };
+                                return `<span class="inline-block px-2 py-1 text-xs font-semibold rounded-full ${c.bg} text-white mr-1">${a}</span>`;
+                            }).join('') : '<span class="text-gray-500">N/A</span>'}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${item.tecnicoPuntero}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${latLng}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${ts}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            <button onclick="openEditModalFromRow(this)" class="text-blue-600 hover:text-blue-900 text-xs font-medium mr-2">Editar</button>
+                            <button onclick="deleteFromRow(this)" class="text-red-600 hover:text-red-900 text-xs font-medium">Eliminar</button>
+                        </td>
+                    </tr>`;
+                }).join('')}
+            </tbody></table>`;
+            container.innerHTML = tableHTML;
+
+            container.querySelectorAll('th[data-key]').forEach(th => {
+                if (th.getAttribute('data-key') !== 'actions') th.addEventListener('click', () => handleSort(th.getAttribute('data-key')));
+            });
+            container.querySelectorAll('tbody tr').forEach(row => {
+                row.addEventListener('click', e => {
+                    if (e.target.tagName !== 'BUTTON') {
+                        const lat = parseFloat(row.getAttribute('data-lat')), lng = parseFloat(row.getAttribute('data-lng'));
+                        if (map && !isNaN(lat) && !isNaN(lng)) map.setView([lat, lng], 14);
+                    }
+                });
+            });
+        }
+
         function sortData(data, key, direction) {
-            return data.sort((a, b) => {
-                let valA = a[key];
-                let valB = b[key];
-
-                if (key === 'timestamp') {
-                    valA = valA instanceof Date ? valA.getTime() : (valA && typeof valA.toMillis === 'function' ? valA.toMillis() : (valA || 0));
-                    valB = valB instanceof Date ? valB.getTime() : (valB && typeof valB.toMillis === 'function' ? valB.toMillis() : (valB || 0));
-                }
-                
-                if (typeof valA === 'string' && typeof valB === 'string') {
-                    valA = valA.toLowerCase();
-                    valB = valB.toLowerCase();
-                }
-
-                if (valA < valB) return direction === 'asc' ? -1 : 1;
-                if (valA > valB) return direction === 'asc' ? 1 : -1;
-                return 0;
+            return data.sort((a,b) => {
+                let A = a[key], B = b[key];
+                if (key === 'timestamp') { A = A instanceof Date ? A.getTime() : (A?.toMillis?.() ?? (A||0)); B = B instanceof Date ? B.getTime() : (B?.toMillis?.() ?? (B||0)); }
+                if (typeof A === 'string' && typeof B === 'string') { A = A.toLowerCase(); B = B.toLowerCase(); }
+                return (A < B ? -1 : A > B ? 1 : 0) * (direction === 'asc' ? 1 : -1);
             });
         }
 
         function handleSort(key) {
-            if (sortState.key === key) {
-                sortState.direction = sortState.direction === 'asc' ? 'desc' : 'asc';
-            } else {
-                sortState.key = key;
-                sortState.direction = 'desc';
-            }
+            sortState.key === key ? sortState.direction = sortState.direction === 'asc' ? 'desc' : 'asc' : (sortState.key = key, sortState.direction = 'desc');
             renderData();
         }
 
-        // --- Renderizado Tabla y Mapa (actualizado con nuevos campos y colores) ---
-        function renderMapAndTable(data) {
-            if (!map) return;
-            
-            markerGroup.clearLayers();
-            let bounds = []; 
+        function renderData() { renderMapAndTable(allFieldData); showStatus(`Total: ${allFieldData.length} registro(s).`, 'info'); }
 
-            data.forEach(item => {
-                const coords = [item.lat, item.lng];
-                bounds.push(coords);
-                
-                const activity = item.actividadRealizada;
-                const colorConfig = activityColors[activity] || { bg: 'bg-gray-500', text: 'text-gray-700', hex: '#6b7280' };
-
-                const formattedDate = new Date(item.fecha + 'T00:00:00').toLocaleDateString('es-ES', {
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric'
-                });
-                
-                const customIcon = L.divIcon({
-                    className: 'custom-marker',
-                    html: `<div class="${colorConfig.bg} w-4 h-4 rounded-full border-2 border-white shadow-lg transform rotate-45"></div>`,
-                    iconSize: [20, 20],
-                    iconAnchor: [10, 10]
-                });
-
-                const popupContent = `
-                    <div style="font-family: 'Inter', sans-serif;">
-                        <strong style="color:#1f2937;">Fecha:</strong> ${formattedDate}<br>
-                        <strong style="color:#1f2937;">Nº cédula:</strong> ${item.cedula}<br>
-                        <strong style="color:#1f2937;">Nombre Beneficiario/a:</strong> ${item.nombreBeneficiario}<br>
-                        <strong style="color:#1f2937;">Actividad:</strong> <span style="font-weight:bold; color:${colorConfig.hex};">${item.actividadRealizada}</span><br>
-                        <strong style="color:#1f2937;">Técnico/Puntero:</strong> ${item.tecnicoPuntero}<br>
-                        <hr style="margin:4px 0;">
-                        <em style="font-size:10px; color:#6b7280;">Registrado por: ${item.userId === userId ? 'Tú' : item.userId.substring(0, 8) + '...'}</em>
-                    </div>
-                `;
-
-                const marker = L.marker(coords, { icon: customIcon }).bindPopup(popupContent);
-                markerGroup.addLayer(marker);
-            });
-
-            if (bounds.length > 0) {
-                map.fitBounds(bounds, { padding: [50, 50] });
-            }
-            
-            // Render Tabla
-            const container = document.getElementById('data-table-container');
-            if (data.length === 0) {
-                container.innerHTML = '<p class="text-gray-500 italic">No hay datos de campo registrados todavía.</p>';
-                return;
-            }
-
-            const sortedData = sortData([...data], sortState.key, sortState.direction);
-
-            const headers = [
-                { id: 'fecha', name: 'Fecha' },
-                { id: 'cedula', name: 'Nº cédula Beneficiario/a' },
-                { id: 'nombreBeneficiario', name: 'Nombre Beneficiario/a' },
-                { id: 'actividadRealizada', name: 'Actividad Realizada' },
-                { id: 'tecnicoPuntero', name: 'Nombre del Técnico o Puntero' },
-                { id: 'lat', name: 'Lat/Lng' },
-                { id: 'timestamp', name: 'Registro' },
-                { id: 'actions', name: 'Acciones' }
-            ];
-
-            let tableHTML = `
-                <table class="min-w-full divide-y divide-gray-200">
-                    <thead class="bg-gray-50">
-                        <tr>
-                            ${headers.map(header => {
-                                let sortIcon = '';
-                                if (sortState.key === header.id && header.id !== 'actions') {
-                                    sortIcon = sortState.direction === 'asc' 
-                                        ? '<span class="ml-1 text-xs">▲</span>' 
-                                        : '<span class="ml-1 text-xs">▼</span>';
-                                }
-                                
-                                return `
-                                    <th scope="col" data-key="${header.id}" 
-                                        class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider ${header.id === 'actions' ? '' : 'cursor-pointer hover:bg-gray-200 transition duration-150'}">
-                                        ${header.name} ${sortIcon}
-                                    </th>
-                                `;
-                            }).join('')}
-                        </tr>
-                    </thead>
-                    <tbody class="bg-white divide-y divide-gray-200">
-                        ${sortedData.map(item => {
-                            const activity = item.actividadRealizada;
-                            const colorConfig = activityColors[activity];
-                            const colorClass = colorConfig?.text || 'text-gray-700';
-
-                            let timestampText = 'N/A';
-                            let dateObj = null;
-                            if (connectionError && item.timestamp instanceof Date) {
-                                dateObj = item.timestamp;
-                            } else if (item.timestamp && typeof item.timestamp.toDate === 'function') {
-                                dateObj = item.timestamp.toDate();
-                            }
-
-                            if (dateObj) {
-                                timestampText = dateObj.toLocaleTimeString('es-ES', { 
-                                    hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' 
-                                });
-                            }
-
-                            const latLngText = `${item.lat.toFixed(4)}, ${item.lng.toFixed(4)}`;
-
-                            return `
-                                <tr class="hover:bg-blue-50/50 transition duration-150" data-lat="${item.lat}" data-lng="${item.lng}" data-item='${JSON.stringify(item).replace(/'/g, "&#39;")}' data-doc-id="${item.id}">
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${item.fecha}</td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${item.cedula}</td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${item.nombreBeneficiario}</td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm font-semibold ${colorClass}">${item.actividadRealizada}</td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${item.tecnicoPuntero}</td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${latLngText}</td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${timestampText}</td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                        <button onclick="openEditModalFromRow(this)" class="text-blue-600 hover:text-blue-900 text-xs font-medium mr-2">Editar</button>
-                                        <button onclick="deleteFromRow(this)" class="text-red-600 hover:text-red-900 text-xs font-medium">Eliminar</button>
-                                    </td>
-                                </tr>
-                            `;
-                        }).join('')}
-                    </tbody>
-                </table>
-            `;
-
-            container.innerHTML = tableHTML;
-
-            // Eventos para sort y click fila (igual)
-            container.querySelectorAll('th[data-key]').forEach(th => {
-                if (th.getAttribute('data-key') !== 'actions') {
-                    th.addEventListener('click', () => {
-                        const key = th.getAttribute('data-key');
-                        handleSort(key);
-                    });
-                }
-            });
-
-            // Click en fila para centrar mapa
-            container.querySelectorAll('tbody tr').forEach(row => {
-                row.addEventListener('click', (e) => {
-                    if (e.target.tagName !== 'BUTTON') {  // No centrar si clic en botón
-                        const lat = parseFloat(row.getAttribute('data-lat'));
-                        const lng = parseFloat(row.getAttribute('data-lng'));
-                        if (map && !isNaN(lat) && !isNaN(lng)) {
-                            map.setView([lat, lng], 14); 
-                        }
-                    }
-                });
-            });
-        }
-        
-        function renderData() {
-            renderMapAndTable(allFieldData);
-            showStatus(`Total de ${allFieldData.length} registros cargados.`, 'info');
-        }
-
-        // --- Listener Realtime (igual) ---
         function setupRealtimeListener() {
-            if (connectionError) {
-                renderData();
-                return;
-            }
-
-            if (!db || !isAuthReady) return;
-
-            const collectionRef = collection(db, COLLECTION_NAME);
-            const q = query(collectionRef); 
-
-            onSnapshot(q, (snapshot) => {
+            if (connectionError) return renderData();
+            const q = query(collection(db, COLLECTION_NAME));
+            onSnapshot(q, snap => {
                 allFieldData = [];
-
-                snapshot.forEach(docSnap => {
-                    const data = docSnap.data();
-                    if (data.lat && data.lng) {
-                        const fullData = { ...data, id: docSnap.id, lat: data.lat, lng: data.lng };
-                        allFieldData.push(fullData);
-                    }
+                snap.forEach(docSnap => {
+                    const d = docSnap.data();
+                    if (d.lat && d.lng) allFieldData.push({ ...d, id: docSnap.id, lat: d.lat, lng: d.lng });
                 });
-                renderData();
-                showStatus(`Total de ${snapshot.size} registros cargados en el mapa y la tabla desde la colección: ${COLLECTION_NAME}`, 'success');
-
-            }, (error) => {
-                console.error("Error en la escucha de Firestore:", error);
-                showStatus('Error al cargar datos del mapa en tiempo real.', 'error');
-                connectionError = true;
-                renderData();
-            });
+                renderData(); showStatus(`Cargados ${snap.size} registro(s).`, 'success');
+            }, err => { console.error(err); showStatus('Error en tiempo real.', 'error'); connectionError = true; renderData(); });
         }
 
-        // --- Inicialización ---
         document.addEventListener('DOMContentLoaded', () => {
-            const today = new Date().toISOString().split('T')[0];
-            document.getElementById('fecha').value = today;
+            document.getElementById('fecha').value = new Date().toISOString().split('T')[0];
             initializeFirebase();
         });
-
     </script>
 </body>
 </html>
