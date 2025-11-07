@@ -93,7 +93,7 @@
                         <input type="text" id="nombreBeneficiario" placeholder="Nombre completo" required class="form-input">
                     </div>
 
-                    <!-- NUEVA COLUMNA: Contratista Principal -->
+                    <!-- Contratista Principal -->
                     <div class="mb-4">
                         <label for="contratistaPrincipal" class="block text-sm font-medium text-gray-700 mb-1">Contratista Principal</label>
                         <select id="contratistaPrincipal" required class="form-select">
@@ -203,7 +203,6 @@
                     <input type="text" id="edit-nombreBeneficiario" required class="form-input">
                 </div>
 
-                <!-- NUEVO: Contratista en modal -->
                 <div class="mb-4">
                     <label for="edit-contratistaPrincipal" class="block text-sm font-medium text-gray-700 mb-1">Contratista Principal</label>
                     <select id="edit-contratistaPrincipal" required class="form-select">
@@ -276,13 +275,16 @@
 
         const COLLECTION_NAME = 'field_data_geolocalizados';
 
+        // === COLORES PARA ACTIVIDADES ===
         const activityColors = {
-            'Rastra': { bg: 'bg-red-500', text: 'text-red-700', hex: '#ef4444' },
+            'Destronque': { bg: 'bg-amber-500', text: 'text-amber-700', hex: '#f59e0b' },
+            'Primera rastra': { bg: 'bg-red-600', text: 'text-red-800', hex: '#dc2626' },
+            'Segunda rastra': { bg: 'bg-rose-600', text: 'text-rose-800', hex: '#e11d48' },
             'Subsolado': { bg: 'bg-orange-500', text: 'text-orange-700', hex: '#f97316' },
             'Encalado': { bg: 'bg-yellow-500', text: 'text-yellow-700', hex: '#f59e0b' },
             'Plantación': { bg: 'bg-green-500', text: 'text-green-700', hex: '#10b981' },
             'Fertilización': { bg: 'bg-lime-500', text: 'text-lime-700', hex: '#84cc16' },
-            'Aplicación de gel': { bg: 'bg-blue-500', text: 'text-blue-700', hex: '#3b82f6' },
+            'Aplicación de hidrogel': { bg: 'bg-blue-500', text: 'text-blue-700', hex: '#3b82f6' },
             'Riego': { bg: 'bg-cyan-500', text: 'text-cyan-700', hex: '#06b6d4' },
             'Control de hormigas': { bg: 'bg-indigo-500', text: 'text-indigo-700', hex: '#6366f1' },
             'Carpida': { bg: 'bg-violet-500', text: 'text-violet-700', hex: '#8b5cf6' },
@@ -290,10 +292,21 @@
             'Inventario forestal': { bg: 'bg-pink-500', text: 'text-pink-700', hex: '#ec4899' },
         };
 
+        // === LISTA DE ACTIVIDADES (Destronque en vez de Pala) ===
         const actividadesList = [
-            "Rastra", "Subsolado", "Encalado", "Plantación", "Fertilización",
-            "Aplicación de hidrogel", "Riego", "Control de hormigas", "Carpida",
-            "Muestra de suelo", "Inventario forestal"
+            "Destronque",
+            "Primera rastra",
+            "Segunda rastra",
+            "Subsolado",
+            "Encalado",
+            "Plantación",
+            "Fertilización",
+            "Aplicación de hidrogel",
+            "Riego",
+            "Control de hormigas",
+            "Carpida",
+            "Muestra de suelo",
+            "Inventario forestal"
         ];
 
         function createActivityCheckboxes(containerId, namePrefix, selected = []) {
@@ -586,7 +599,7 @@
             const sorted = sortData([...data], sortState.key, sortState.direction);
             const headers = [
                 {id:'fecha',name:'Fecha'},{id:'cedula',name:'Nº cédula Beneficiario/a'},{id:'nombreBeneficiario',name:'Nombre Beneficiario/a'},
-                {id:'contratistaPrincipal',name:'Contratista Principal'}, // NUEVA COLUMNA
+                {id:'contratistaPrincipal',name:'Contratista Principal'},
                 {id:'actividadRealizada',name:'Actividades'},{id:'tecnicoPuntero',name:'Técnico/Puntero'},{id:'lat',name:'Lat/Lng'},
                 {id:'timestamp',name:'Registro'},{id:'actions',name:'Acciones'}
             ];
@@ -673,4 +686,4 @@
         });
     </script>
 </body>
-</html>
+</html> 
