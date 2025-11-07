@@ -16,7 +16,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
         body { font-family: 'Inter', sans-serif; background-color: #f7f9fb; }
-        .form-input {
+        .form-input, .form-select {
             @apply w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 ease-in-out;
         }
         #map {
@@ -91,6 +91,23 @@
                     <div class="mb-4">
                         <label for="nombreBeneficiario" class="block text-sm font-medium text-gray-700 mb-1">Nombre Beneficiario/a</label>
                         <input type="text" id="nombreBeneficiario" placeholder="Nombre completo" required class="form-input">
+                    </div>
+
+                    <!-- NUEVA COLUMNA: Contratista Principal -->
+                    <div class="mb-4">
+                        <label for="contratistaPrincipal" class="block text-sm font-medium text-gray-700 mb-1">Contratista Principal</label>
+                        <select id="contratistaPrincipal" required class="form-select">
+                            <option value="">Seleccione contratista...</option>
+                            <option value="Carlos Vega">Carlos Vega</option>
+                            <option value="Rolando Rodriguez">Rolando Rodriguez</option>
+                            <option value="Roque Martinez">Roque Martinez</option>
+                            <option value="Cristian Morel">Cristian Morel</option>
+                            <option value="Porfirio Silva">Porfirio Silva</option>
+                            <option value="Saturnino Lopez">Saturnino Lopez</option>
+                            <option value="Samuel Mujica">Samuel Mujica</option>
+                            <option value="Nemecio Bernal">Nemecio Bernal</option>
+                            <option value="Juan Rivarola">Juan Rivarola</option>
+                        </select>
                     </div>
 
                     <!-- CHECKBOXES MÓVIL -->
@@ -186,6 +203,23 @@
                     <input type="text" id="edit-nombreBeneficiario" required class="form-input">
                 </div>
 
+                <!-- NUEVO: Contratista en modal -->
+                <div class="mb-4">
+                    <label for="edit-contratistaPrincipal" class="block text-sm font-medium text-gray-700 mb-1">Contratista Principal</label>
+                    <select id="edit-contratistaPrincipal" required class="form-select">
+                        <option value="">Seleccione contratista...</option>
+                        <option value="Carlos Vega">Carlos Vega</option>
+                        <option value="Rolando Rodriguez">Rolando Rodriguez</option>
+                        <option value="Roque Martinez">Roque Martinez</option>
+                        <option value="Cristian Morel">Cristian Morel</option>
+                        <option value="Porfirio Silva">Porfirio Silva</option>
+                        <option value="Saturnino Lopez">Saturnino Lopez</option>
+                        <option value="Samuel Mujica">Samuel Mujica</option>
+                        <option value="Nemecio Bernal">Nemecio Bernal</option>
+                        <option value="Juan Rivarola">Juan Rivarola</option>
+                    </select>
+                </div>
+
                 <!-- CHECKBOXES EN MODAL -->
                 <div class="mb-4">
                     <label class="block text-sm font-medium text-gray-700 mb-2">Actividades Realizadas</label>
@@ -256,7 +290,6 @@
             'Inventario forestal': { bg: 'bg-pink-500', text: 'text-pink-700', hex: '#ec4899' },
         };
 
-        // --- CHECKBOXES MÓVIL ---
         const actividadesList = [
             "Rastra", "Subsolado", "Encalado", "Plantación", "Fertilización",
             "Aplicación de hidrogel", "Riego", "Control de hormigas", "Carpida",
@@ -399,6 +432,7 @@
                     'Fecha': i.fecha,
                     'Nº cédula Beneficiario/a': i.cedula,
                     'Nombre Beneficiario/a': i.nombreBeneficiario,
+                    'Contratista Principal': i.contratistaPrincipal || 'N/A',
                     'Actividad Realizada': Array.isArray(i.actividadRealizada) ? i.actividadRealizada.join(', ') : i.actividadRealizada,
                     'Nombre del Técnico o Puntero': i.tecnicoPuntero,
                     'Lat': i.lat, 'Lng': i.lng, 'Timestamp': ts, 'User ID': i.userId
@@ -417,10 +451,13 @@
             document.getElementById('actividades-error').classList.add('hidden');
             let coords = currentCoords; if (!coords) coords = await getLocationAndUpdateUI(true); if (!coords) return;
             const actividades = Array.from(checked).map(c => c.value);
+            const contratista = document.getElementById('contratistaPrincipal').value;
+            if (!contratista) return showStatus('Selecciona un contratista.', 'error');
             const data = {
                 fecha: document.getElementById('fecha').value,
                 cedula: document.getElementById('cedula').value,
                 nombreBeneficiario: document.getElementById('nombreBeneficiario').value,
+                contratistaPrincipal: contratista,
                 actividadRealizada: actividades,
                 tecnicoPuntero: document.getElementById('tecnicoPuntero').value,
             };
@@ -435,10 +472,13 @@
             const checked = document.querySelectorAll('input[name="edit-actividad"]:checked');
             if (checked.length === 0) return showStatus('Selecciona al menos una actividad.', 'error');
             const actividades = Array.from(checked).map(c => c.value);
+            const contratista = document.getElementById('edit-contratistaPrincipal').value;
+            if (!contratista) return showStatus('Selecciona un contratista.', 'error');
             const updated = {
                 fecha: document.getElementById('edit-fecha').value,
                 cedula: document.getElementById('edit-cedula').value,
                 nombreBeneficiario: document.getElementById('edit-nombreBeneficiario').value,
+                contratistaPrincipal: contratista,
                 actividadRealizada: actividades,
                 tecnicoPuntero: document.getElementById('edit-tecnicoPuntero').value,
             };
@@ -456,6 +496,7 @@
             document.getElementById('edit-fecha').value = item.fecha;
             document.getElementById('edit-cedula').value = item.cedula;
             document.getElementById('edit-nombreBeneficiario').value = item.nombreBeneficiario;
+            document.getElementById('edit-contratistaPrincipal').value = item.contratistaPrincipal || '';
             document.getElementById('edit-tecnicoPuntero').value = item.tecnicoPuntero;
             document.getElementById('edit-coords').textContent = `${item.lat.toFixed(4)}, ${item.lng.toFixed(4)}`;
             createActivityCheckboxes('edit-actividades-container', 'edit-actividad', Array.isArray(item.actividadRealizada) ? item.actividadRealizada : []);
@@ -478,22 +519,18 @@
         function initializeMap() {
             map = L.map('map').setView([-23.4425, -58.4438], 6);
 
-            // Capa de calle (OpenStreetMap)
             streetLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
             });
 
-            // Capa satelital (Esri World Imagery)
             satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
                 attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
             });
 
-            // Iniciar con calle
             streetLayer.addTo(map);
             L.control.scale().addTo(map);
             markerGroup.addTo(map);
 
-            // Botones de cambio
             mapStreetBtn.addEventListener('click', () => {
                 if (currentLayer !== 'street') {
                     map.removeLayer(satelliteLayer);
@@ -530,6 +567,7 @@
                         <strong style="color:#1f2937;">Fecha:</strong> ${new Date(item.fecha+'T00:00:00').toLocaleDateString('es-ES',{year:'numeric',month:'long',day:'numeric'})}<br>
                         <strong style="color:#1f2937;">Nº cédula:</strong> ${item.cedula}<br>
                         <strong style="color:#1f2937;">Nombre Beneficiario/a:</strong> ${item.nombreBeneficiario}<br>
+                        <strong style="color:#1f2937;">Contratista:</strong> ${item.contratistaPrincipal || 'N/A'}<br>
                         <strong style="color:#1f2937;">Actividades:</strong><br>
                         ${Array.isArray(item.actividadRealizada) ? item.actividadRealizada.map(a => {
                             const c = activityColors[a] || { hex: '#6b7280' };
@@ -548,6 +586,7 @@
             const sorted = sortData([...data], sortState.key, sortState.direction);
             const headers = [
                 {id:'fecha',name:'Fecha'},{id:'cedula',name:'Nº cédula Beneficiario/a'},{id:'nombreBeneficiario',name:'Nombre Beneficiario/a'},
+                {id:'contratistaPrincipal',name:'Contratista Principal'}, // NUEVA COLUMNA
                 {id:'actividadRealizada',name:'Actividades'},{id:'tecnicoPuntero',name:'Técnico/Puntero'},{id:'lat',name:'Lat/Lng'},
                 {id:'timestamp',name:'Registro'},{id:'actions',name:'Acciones'}
             ];
@@ -567,6 +606,7 @@
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${item.fecha}</td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${item.cedula}</td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${item.nombreBeneficiario}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700 font-medium">${item.contratistaPrincipal || 'N/A'}</td>
                         <td class="px-6 py-4 text-sm">
                             ${Array.isArray(item.actividadRealizada) ? item.actividadRealizada.map(a => {
                                 const c = activityColors[a] || { bg: 'bg-gray-500' };
