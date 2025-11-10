@@ -277,6 +277,7 @@
 
         // === COLORES PARA ACTIVIDADES ===
         const activityColors = {
+            'Delimitación - Mojonamiento': { bg: 'bg-blue-800', text: 'text-blue-100', hex: '#1e40af' },
             'Destronque': { bg: 'bg-amber-500', text: 'text-amber-700', hex: '#f59e0b' },
             'Primera rastra': { bg: 'bg-red-600', text: 'text-red-800', hex: '#dc2626' },
             'Segunda rastra': { bg: 'bg-rose-600', text: 'text-rose-800', hex: '#e11d48' },
@@ -292,8 +293,9 @@
             'Inventario forestal': { bg: 'bg-pink-500', text: 'text-pink-700', hex: '#ec4899' },
         };
 
-        // === LISTA DE ACTIVIDADES (Destronque en vez de Pala) ===
+        // === LISTA DE ACTIVIDADES (Delimitación PRIMERA) ===
         const actividadesList = [
+            "Delimitación - Mojonamiento",
             "Destronque",
             "Primera rastra",
             "Segunda rastra",
@@ -433,7 +435,7 @@
             catch (error) { console.error(error); showStatus(`Error: ${error.message}`, 'error'); }
         }
 
-        // --- Exportar Excel ---
+        // --- Exportar Excel (TODOS LOS DATOS) ---
         function exportToExcel() {
             if (!allFieldData.length) return showStatus('Sin datos.', 'info');
             const exportData = allFieldData.map(i => {
@@ -686,4 +688,4 @@
         });
     </script>
 </body>
-</html> 
+</html>
